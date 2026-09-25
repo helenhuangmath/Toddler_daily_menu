@@ -680,12 +680,12 @@
   ];
 
   const FINISH_BABY = {
-    en: 'Cool to lukewarm and test on your wrist. No salt, sugar, honey or stock cubes.',
-    zh: '放至温热，滴在手腕内侧试温。不加盐、糖、蜂蜜或鸡精。',
+    en: 'No seasoning at all: no salt, soy sauce, sugar, honey or stock. Cool to lukewarm and test on your wrist.',
+    zh: '不放任何调料：盐、酱油、糖、蜂蜜、鸡精都不加。放至温热，滴在手腕内侧试温。',
   };
   const FINISH_KID = {
-    en: 'Season lightly: at most a small pinch of salt at the end, no stock cubes, MSG or sugar. Sit with your child while they eat.',
-    zh: '清淡调味：出锅前最多加一小撮盐，不加鸡精、味精或糖。孩子吃饭时大人要在旁边。',
+    en: 'Season lightly: at most a small pinch of salt or a few drops of low-sodium soy sauce at the end; no stock cubes, MSG or sugar. Sit with your child while they eat.',
+    zh: '可以少放一点调料：出锅前最多一小撮盐或几滴低钠生抽，不放鸡精、味精和糖。孩子吃饭时大人要在旁边。',
   };
 
   // Stage-appropriate word for fruit served on its own.
@@ -696,6 +696,13 @@
   const STAPLE_KID = {
     rice: { en: 'steamed rice', zh: '米饭' }, millet: { en: 'millet rice', zh: '小米饭' }, quinoa: { en: 'quinoa rice', zh: '藜麦饭' },
     couscous: { en: 'couscous', zh: '古斯米' }, mantou: { en: 'steamed bun', zh: '馒头' }, bread: { en: 'whole-wheat bread', zh: '全麦面包' },
+    oats: { en: 'oat porridge', zh: '燕麦粥' }, noodles: { en: 'noodles', zh: '面条' }, pasta: { en: 'pasta', zh: '意面' },
+  };
+  // How a breakfast extra is served to an older child.
+  const KID_EXTRA = {
+    egg: { en: 'boiled egg', zh: '水煮蛋' }, yogurt: { en: 'plain yogurt', zh: '原味酸奶' }, avocado: { en: 'avocado slices', zh: '牛油果片' },
+    ricotta: { en: 'soft cheese', zh: '软奶酪' }, milk: { en: 'milk', zh: '牛奶' }, peanutbutter: { en: 'thin peanut butter', zh: '花生酱' },
+    tahini: { en: 'sesame paste', zh: '芝麻酱' }, butter: { en: 'butter', zh: '黄油' },
   };
 
   /**
@@ -920,6 +927,22 @@
         break;
 
       // ----- family food: lunch & dinner -----
+      case 'k_plate': {
+        const parts = [];
+        if (meal.main) {
+          const porridge = (catalog.get(meal.main) || {}).form === 'porridge' && meal.slot === 'breakfast';
+          parts.push(porridge ? (zh ? `${carbZh(meal.main)}粥` : `${meal.main === 'rice' ? 'rice' : nl(meal.main)} porridge`) : STAPLE_KID[meal.main] ? STAPLE_KID[meal.main][L] : (zh ? `蒸${n(meal.main)}` : `steamed ${nl(meal.main)}`));
+          method.push(porridge ? (zh ? `${carbZh(meal.main)}加水煮成粥（比小宝的稠一些）。` : `Cook the ${nl(meal.main)} into porridge, a little thicker than the baby's.`) : (zh ? `${n(meal.main)}蒸熟或煮熟。` : `Steam or cook the ${nl(meal.main)}.`));
+        }
+        for (const id of [meal.protein, meal.extra, meal.partner].filter(Boolean)) {
+          parts.push(KID_EXTRA[id] ? KID_EXTRA[id][L] : n(id));
+          if (id === 'egg') method.push(zh ? '鸡蛋冷水下锅，水开后煮8–10分钟至全熟。' : 'Boil the egg 8–10 minutes after the water boils, until fully set.');
+        }
+        if (meal.veg) { parts.push(zh ? `清炒${n(meal.veg)}` : `stir-fried ${nl(meal.veg)}`); method.push(zh ? `${n(meal.veg)}少油快炒。` : `Stir-fry the ${nl(meal.veg)} in a little oil.`); }
+        if (meal.fruit) parts.push(zh ? `${n(meal.fruit)}块` : `${nl(meal.fruit)} pieces`);
+        title = parts.map(x => (zh ? x : cap(x))).join(' + ');
+        break;
+      }
       case 'k_set': {
         const dishes = kidSetDishes(meal, L, n, nl);
         title = dishes.titles.join(zh ? ' + ' : ' + ');
@@ -1005,7 +1028,8 @@
     const v = meal.veg;
     const staple = meal.main ? (STAPLE_KID[meal.main] ? STAPLE_KID[meal.main][L] : (zh ? `蒸${n(meal.main)}` : `steamed ${nl(meal.main)}`)) : '';
     if (staple) titles.push(zh ? staple : cap(staple));
-    switch (meal.pmethod) {
+    const pm = !v && ['stirfry', 'braise', 'meatball', 'fish_sauce', 'egg_stirfry', 'custard', 'omelette'].includes(meal.pmethod) ? 'plain' : meal.pmethod;
+    switch (pm) {
       case 'stirfry':
         titles.push(zh ? `${n(v)}炒${n(p)}` : cap(`stir-fried ${nl(p)} with ${nl(v)}`));
         steps.push(zh ? `${n(p)}切细丝或小片，${n(v)}切小块。少油先把${n(p)}炒熟，再下${n(v)}，加一点水盖盖焖2–3分钟到软。` : `Slice the ${nl(p)} thinly and cut the ${nl(v)} small. Stir-fry the ${nl(p)} in a little oil until cooked, add the ${nl(v)} and a splash of water, cover 2–3 min until tender.`);
@@ -1150,13 +1174,120 @@
     return { food, milk: milkT, total: food.map((v, i) => v + milkT[i]), uncounted: [...uncounted] };
   }
 
+  // ---------- one set of ingredients, a recipe for each child ----------
+
+  const ageRank = id => DATA.AGE_GROUPS.findIndex(a => a.id === id);
+
+  /** Youngest / smoothest-texture child first: their menu decides the shared ingredients. */
+  function familyOrder(profiles) {
+    return profiles.slice().sort((a, b) => profileOf(a).stage - profileOf(b).stage || ageRank(profileOf(a).age) - ageRank(profileOf(b).age));
+  }
+
+  function kidProteinMethod(pid, hasVeg, babyTemplate, rand) {
+    const pickOne = list => list[Math.floor(rand() * list.length)];
+    if (MEAT.includes(pid) || pid === 'liver') {
+      if (babyTemplate === 'stew') return 'braise'; // one pot: take the baby's portion out before seasoning
+      if (babyTemplate === 'meatball') return 'meatball'; // one mixture: baby's steamed plain, big kid's in seasoned broth
+      return hasVeg ? pickOne(['stirfry', 'stirfry', 'braise']) : 'plain';
+    }
+    if (FISH.includes(pid)) return hasVeg ? pickOne(['steamed', 'fish_sauce']) : 'steamed';
+    if (pid === 'shrimp') return hasVeg ? 'stirfry' : 'plain';
+    if (pid === 'egg') return hasVeg ? (babyTemplate === 'egg_custard' ? pickOne(['egg_stirfry', 'omelette']) : pickOne(['egg_stirfry', 'custard'])) : 'plain';
+    if (pid === 'tofu') return 'tofu_braise';
+    if (LEGUME.includes(pid)) return 'legume_stew';
+    return hasVeg ? 'stirfry' : 'plain';
+  }
+
+  /**
+   * The same meal (same ingredients) as a recipe for another child. Children still on baby textures
+   * share the dish as is (the texture step differs); family-food eaters get a family-style dish.
+   */
+  function pairMeal(meal, settings, seed) {
+    const prof = profileOf(settings);
+    const out = { ...meal, items: meal.items.slice(), pair: true };
+    delete out.photo;
+    if (!prof.kid || meal.template === 'gallery') return out;
+    const rand = mulberry32((seed || 1) + meal.items.join('').length * 31 + SLOT_ORDER.indexOf(meal.slot));
+    const t = meal.template;
+    const snackT = ['snack_fruit', 'snack_dairy', 'snack_avocado', 'snack_two_fruit', 'snack_simple'];
+    if (snackT.includes(t)) return out;
+    // ----- breakfast -----
+    if (t === 'pancake') return { ...out, template: 'k_pancake' };
+    if (t === 'oat_yogurt') return { ...out, template: 'k_plate' }; // oat porridge + yogurt + fruit pieces
+    if (t === 'steamcake') return out;
+    if (t === 'bf_noodle' && meal.extra === 'egg') return { ...out, template: 'k_noodle', protein: 'egg', extra: null, veg: null };
+    if (t === 'bf_bread' || (meal.main === 'bread' && ['egg', 'avocado', 'ricotta'].includes(meal.extra))) return { ...out, template: 'k_toast' };
+    if (t.startsWith('bf_') || t === 'fruit_only') return { ...out, template: 'k_plate' };
+    // ----- lunch & dinner -----
+    const pid = meal.protein;
+    const set = pm => ({ ...out, template: 'k_set', pmethod: pm, vmethod: null, veg2: null });
+    switch (t) {
+      case 'main_noodle': return pid ? { ...out, template: 'k_noodle_dish' } : { ...out, template: 'k_plate' };
+      case 'main_pasta': return pid ? { ...out, template: 'k_pasta' } : { ...out, template: 'k_plate' };
+      case 'softrice': return ['egg', 'shrimp', 'chicken', 'pork', 'beef'].includes(pid) ? { ...out, template: 'k_friedrice' } : set(kidProteinMethod(pid, !!meal.veg, t, rand));
+      case 'wonton': return { ...out, template: 'k_dumpling' };
+      case 'veg_pancake': return { ...out, template: 'k_omelette', main: meal.main === 'oats' ? 'oats' : 'flour', protein: 'egg' };
+      case 'egg_custard': return set(kidProteinMethod('egg', !!meal.veg, t, rand));
+      case 'tofu_stew': return set('tofu_braise');
+      default:
+        if (!pid) return { ...out, template: 'k_plate' };
+        return set(kidProteinMethod(pid, !!meal.veg, t, rand));
+    }
+  }
+
+  /**
+   * Menus for every child from one set of ingredients: the youngest child's menu is made first
+   * (with everyone's allergies left out), then each dish is rewritten for the others.
+   * Returns { [profileId]: plan }.
+   */
+  function generateFamilyPlans(opts) {
+    const profiles = familyOrder(opts.profiles);
+    const base = profiles[0];
+    const exclude = [...new Set(profiles.flatMap(p => p.exclude || []))];
+    const slots = SLOT_ORDER.filter(s => profiles.some(p => profileOf(p).slots.includes(s)));
+    const basePlan = generatePlan({ ...opts, settings: { ...base, exclude, meals: slots } });
+    const plans = {};
+    for (const p of profiles) {
+      const mine = profileOf(p).slots;
+      plans[p.id] = {
+        ...basePlan,
+        family: true,
+        days: basePlan.days.map((d, di) => ({
+          meals: d.meals.filter(m => mine.includes(m.slot)).map(m => (p === base ? { ...m, pair: true } : pairMeal(m, p, (opts.seed || 1) + di))),
+        })),
+      };
+    }
+    return plans;
+  }
+
+  /** Swap one shared dish for every child at once. */
+  function swapFamilyMeal(plans, opts, profileId, dayIdx, slot) {
+    const profiles = familyOrder(opts.profiles);
+    const base = profiles[0];
+    const exclude = [...new Set(profiles.flatMap(p => p.exclude || []))];
+    const basePlan = plans[base.id];
+    const mi = basePlan.days[dayIdx].meals.findIndex(m => m.slot === slot);
+    if (mi < 0) return plans;
+    const swapped = swapMeal(basePlan, dayIdx, mi, { ...opts, settings: { ...base, exclude } });
+    const meal = { ...swapped.days[dayIdx].meals[mi], pair: true };
+    const out = { ...plans };
+    for (const p of profiles) {
+      const plan = plans[p.id];
+      if (!plan) continue;
+      const idx = plan.days[dayIdx] ? plan.days[dayIdx].meals.findIndex(m => m.slot === slot) : -1;
+      if (idx < 0) continue;
+      out[p.id] = replaceMeal(plan, dayIdx, idx, p === base ? meal : pairMeal(meal, p, (opts.seed || 1) + dayIdx));
+    }
+    return out;
+  }
+
   /** Daily needs for an age group, in NUTRIENTS order. */
   function needsFor(age) {
     return ageGroup(age).needs;
   }
 
   const api = {
-    SLOTS, SLOT_ORDER, portionFor, mealNutrition, dayNutrition, needsFor, isDry, generatePlan, swapMeal, replaceMeal, galleryToMeal,
+    SLOTS, SLOT_ORDER, generateFamilyPlans, swapFamilyMeal, pairMeal, familyOrder, portionFor, mealNutrition, dayNutrition, needsFor, isDry, generatePlan, swapMeal, replaceMeal, galleryToMeal,
     describeMeal, parseFoodText, foodsInText, planStats, usageOf, buildCatalog, slotsFor, profileOf, ageGroup, comboKey, mulberry32,
   };
   root.TDM_PLANNER = api;

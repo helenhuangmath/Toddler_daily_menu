@@ -96,8 +96,8 @@ test('dish text renders in both languages with safety step and no salt/sugar add
   for (const d of plan.days) for (const m of d.meals) {
     const en = P.describeMeal(m, 'en', [], 'puree');
     const zh = P.describeMeal(m, 'zh', [], 'mash');
-    assert.ok(en.steps.some(s => s.includes('No salt')));
-    assert.ok(zh.steps.some(s => s.includes('不加盐')));
+    assert.ok(en.steps.some(s => /no salt/i.test(s)));
+    assert.ok(zh.steps.some(s => s.includes('不放任何调料')));
     assert.ok(/[一-鿿]/.test(zh.title), zh.title);
     assert.ok(!/undefined|null/.test(en.title + zh.title + en.steps.join() + zh.steps.join()), en.title);
   }
@@ -221,7 +221,7 @@ test('dish text is complete for every age, texture and language', () => {
 test('salt guidance follows age: none under 2, a pinch at most from 2', () => {
   const meal = { slot: 'dinner', template: 'k_set', main: 'rice', protein: 'beef', veg: 'carrot', veg2: 'broccoli', pmethod: 'braise', vmethod: 'steam', items: ['rice', 'beef', 'carrot', 'broccoli'] };
   assert.ok(P.describeMeal(meal, 'en', [], { age: 'y3', texture: 'family' }).steps.some(s => s.includes('pinch of salt')));
-  assert.ok(P.describeMeal(meal, 'en', [], { age: 'm12', texture: 'family' }).steps.some(s => s.includes('No salt')));
+  assert.ok(P.describeMeal(meal, 'en', [], { age: 'm12', texture: 'family' }).steps.some(s => s.includes('No seasoning at all')));
 });
 
 test('older children get bigger portions and their own daily needs', () => {
@@ -324,4 +324,52 @@ test('how often ideas are used can be turned off or up', () => {
   assert.strictEqual(count(0), 0);
   assert.ok(count(0.6) >= count(0.3));
   assert.ok(count(0.6) > 20);
+});
+
+// ---------- one set of ingredients, a recipe for each child ----------
+const KIDS = [
+  { id: 'big', name: '大宝', age: 'y3', texture: 'family', meals: ['breakfast', 'dinner'], exclude: ['fish'] },
+  { id: 'baby', name: '小宝', age: 'm12', texture: 'mash', meals: ['breakfast', 'snack1', 'lunch', 'snack2', 'dinner'], exclude: [] },
+];
+
+test('family menus share the same ingredients, with a different recipe for each child', () => {
+  for (const seed of [1, 2, 3, 4, 5]) {
+    const plans = P.generateFamilyPlans({ pantry: BIG_PANTRY, days: 7, seed, profiles: KIDS });
+    assert.strictEqual(plans.baby.days[0].meals.length, 5);
+    assert.deepStrictEqual(plans.big.days[0].meals.map(m => m.slot), ['breakfast', 'dinner']);
+    let different = 0;
+    plans.big.days.forEach((day, di) => day.meals.forEach(km => {
+      const bm = plans.baby.days[di].meals.find(m => m.slot === km.slot);
+      assert.deepStrictEqual(km.items, bm.items, 'same ingredients');
+      assert.ok(km.pair && bm.pair);
+      assert.ok(km.template.startsWith('k_') || ['steamcake', 'gallery'].includes(km.template), km.template);
+      const kt = P.describeMeal(km, 'zh', [], KIDS[0]);
+      const bt = P.describeMeal(bm, 'zh', [], KIDS[1]);
+      if (kt.title !== bt.title) different++;
+      assert.ok(bt.steps.some(s => s.includes('不放任何调料')), 'baby: no seasoning at all');
+      assert.ok(kt.steps.some(s => s.includes('少放一点调料')), 'big kid: a little seasoning');
+      assert.ok(!/undefined|null|NaN/.test(kt.title + kt.steps.join('')), kt.title);
+    }));
+    assert.ok(different >= 12, `only ${different} of 14 dishes differ`);
+    // Either child's allergy keeps the food out of both menus.
+    for (const plan of [plans.big, plans.baby]) for (const m of plan.days.flatMap(d => d.meals)) {
+      assert.ok(!m.items.some(id => (D.FOODS.find(f => f.id === id) || {}).allergen === 'fish'), m.items.join());
+    }
+  }
+});
+
+test('swapping a shared dish changes it for every child, still with the same ingredients', () => {
+  const plans = P.generateFamilyPlans({ pantry: BIG_PANTRY, days: 7, seed: 7, profiles: KIDS });
+  const before = plans.big.days[2].meals.find(m => m.slot === 'dinner');
+  const next = P.swapFamilyMeal(plans, { pantry: BIG_PANTRY, seed: 8, profiles: KIDS }, 'big', 2, 'dinner');
+  const k = next.big.days[2].meals.find(m => m.slot === 'dinner');
+  const b = next.baby.days[2].meals.find(m => m.slot === 'dinner');
+  assert.notDeepStrictEqual(k.items.slice().sort(), before.items.slice().sort());
+  assert.deepStrictEqual(k.items, b.items);
+  assert.deepStrictEqual(next.big.days[0], plans.big.days[0], 'other days untouched');
+  assert.deepStrictEqual(next.baby.days[2].meals.find(m => m.slot === 'lunch'), plans.baby.days[2].meals.find(m => m.slot === 'lunch'));
+});
+
+test('the youngest child leads the shared menu', () => {
+  assert.deepStrictEqual(P.familyOrder(KIDS).map(p => p.id), ['baby', 'big']);
 });

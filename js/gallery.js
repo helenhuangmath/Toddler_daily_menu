@@ -4,6 +4,8 @@
  *  - "Family photos": image files in the repo's gallery/ folder, listed in gallery/index.json
  *    by scripts/build-gallery.js when the site is published, so every phone sees them.
  *
+ * Dishes without a matching photo simply show no picture.
+ *
  * A gallery item: { id, title, notes, foods: [foodId], slots: [slot], who: [profileId], src, shared }
  * plus, when read by AI: titles { en, zh }, steps { en: [], zh: [] }, missing [{ en, zh }].
  */
@@ -146,22 +148,5 @@
     return best;
   }
 
-  /** A drawn plate with the dish's foods, for dishes without a photo. Returns an SVG data URI. */
-  function illustrate(emojis, slot) {
-    const plates = { breakfast: '#FCE9C8', snack1: '#E3F1DC', lunch: '#DDEBF7', snack2: '#F4E1EE', dinner: '#FBE0D2' };
-    const bg = plates[slot] || '#EDEDE8';
-    const list = emojis.slice(0, 4);
-    const pos = [
-      [[100, 108]],
-      [[74, 104], [128, 112]],
-      [[100, 74], [70, 124], [132, 124]],
-      [[72, 76], [130, 76], [72, 130], [130, 130]],
-    ][Math.max(0, list.length - 1)] || [];
-    const size = list.length <= 1 ? 70 : list.length === 2 ? 56 : 46;
-    const items = list.map((e, i) => `<text x="${pos[i][0]}" y="${pos[i][1]}" font-size="${size}" text-anchor="middle" dominant-baseline="central">${e}</text>`).join('');
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><rect width="200" height="200" fill="${bg}"/><circle cx="100" cy="104" r="84" fill="#fff" opacity=".95"/><circle cx="100" cy="104" r="68" fill="none" stroke="${bg}" stroke-width="4"/>${items}</svg>`;
-    return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
-  }
-
-  root.TDM_GALLERY = { listLocal, addLocal, updateLocal, removeLocal, loadShared, matchPhoto, illustrate, compress };
+  root.TDM_GALLERY = { listLocal, addLocal, updateLocal, removeLocal, loadShared, matchPhoto, compress };
 })(window);

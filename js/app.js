@@ -102,7 +102,7 @@
       milkTitle: 'Milk each day', milkHint: 'Counted in the daily nutrition totals.',
       tabIdeas: 'Ideas', kidsLabel: 'Menu for',
       viewLabel: 'View', viewList: 'Text menu', viewPictures: 'Picture menu',
-      picLabel: 'Picture', photoAuto: 'Auto picture', photoNoneOpt: 'No picture', drawnPlate: 'Drawn plate — add your own photo in Ideas',
+      picLabel: 'Picture', photoAuto: 'Auto picture', photoNoneOpt: 'No picture',
       myPhotosGroup: 'My photos', familyPhotosGroup: 'Family gallery',
       sameFood: name => `Same food as ${name}`, sameFoodTip: 'Cook once: take the younger child\'s portion out before adding any salt.',
       ideasTitle: name => `Cooking ideas for ${name}`,
@@ -133,6 +133,13 @@
       portionScale: (name, age, x) => `The amounts below are for 12–24 months. For ${name} (${age}) the menu uses about ${x}× these.`,
       needsFor: (name, age) => `Daily needs for ${name} (${age})`,
       menuForKid: name => `Menu for ${name}`, details: 'Amounts & how to make',
+      pairTitle: 'Same ingredients, a recipe for each child', pairLabel: 'Plan all children together from the same ingredients',
+      pairHint: 'One shopping list and less cooking: each dish uses the same ingredients for every child, cooked the way each one eats. The youngest gets no seasoning at all; older children may have a little.',
+      makeAll: 'Make menus for all', madeAll: names => `Made matching menus for ${names}.`,
+      viewTogether: 'Cook together (all children)',
+      togetherTip: name => `Wash, cut and cook the ingredients together. Take ${name}'s portion out before adding any seasoning, then season the rest lightly.`,
+      sharedFoods: 'Shared ingredients', pairBadge: (name, title) => `Same ingredients · ${name}: ${title}`,
+      noPhotoYet: 'No photo yet. Add one in Ideas, or pick one here.', togetherNeedsPair: 'Turn on “same ingredients” in Settings and make menus to see this view.',
       partialDay: meals => `Only the meals planned here are counted (${meals}). Lunch or snacks eaten at nursery or school are not included.`,
       menuFor: 'Toddler menu',
     },
@@ -233,7 +240,7 @@
       milkTitle: '每天喝奶', milkHint: '会计入每日营养合计。',
       tabIdeas: '灵感', kidsLabel: '给谁做',
       viewLabel: '查看方式', viewList: '文字菜单', viewPictures: '图片菜单',
-      picLabel: '图片', photoAuto: '自动配图', photoNoneOpt: '不要图片', drawnPlate: '示意图 · 可以在“灵感”里上传自己的照片',
+      picLabel: '图片', photoAuto: '自动配图', photoNoneOpt: '不要图片',
       myPhotosGroup: '我的照片', familyPhotosGroup: '家庭图库',
       sameFood: name => `和${name}同食材`, sameFoodTip: '一锅两吃：加盐调味前，先盛出小的那份。',
       ideasTitle: name => `适合${name}的做法`,
@@ -264,6 +271,13 @@
       portionScale: (name, age, x) => `下面是1–2岁的量。${name}（${age}）的菜单约为这个量的${x}倍。`,
       needsFor: (name, age) => `${name}（${age}）每日营养需要`,
       menuForKid: name => `${name}的菜单`, details: '用量和做法',
+      pairTitle: '一菜两吃：同样的食材，各做各的', pairLabel: '所有孩子用同样的食材一起安排菜单',
+      pairHint: '只买一份菜、少做几顿：每道菜所有孩子用同样的食材，按各自的吃法做。最小的孩子什么调料都不放，大一点的可以少放一点。',
+      makeAll: '生成全家菜单', madeAll: names => `已为${names}生成同食材菜单。`,
+      viewTogether: '一菜两吃（一起看）',
+      togetherTip: name => `食材一起洗、切、煮熟；在放任何调料之前，先盛出${name}的一份，剩下的再少放一点调料。`,
+      sharedFoods: '共用食材', pairBadge: (name, title) => `一菜两吃 · ${name}吃：${title}`,
+      noPhotoYet: '还没有照片，可以在“灵感”里添加，或在这里选一张。', togetherNeedsPair: '在“设置”里打开“一菜两吃”并生成菜单后，就能在这里一起看。',
       partialDay: meals => `只计算这里安排的餐（${meals}）。在幼儿园或学校吃的午餐、加餐没有计入。`,
       menuFor: '宝宝辅食菜单',
     },
@@ -324,6 +338,7 @@
     photos: { local: [], shared: [] },
     draft: null, // idea picture being added or edited on the Ideas tab
     ideaRate: store.get('ideaRate', 0.3), // how often new menus use the family's own ideas
+    pairMode: store.get('pairMode', true), // one set of ingredients, a recipe for each child
   };
   if (!state.profiles.some(p => p.id === state.active)) state.active = state.profiles[0].id;
 
@@ -335,6 +350,7 @@
   const prof = () => state.profiles.find(p => p.id === state.active) || state.profiles[0];
   const ageLabel = p => P.ageGroup(p.age)[state.lang];
   const activePlan = () => state.plans[state.active] || null;
+  const pairing = () => state.pairMode && state.profiles.length > 1;
   const isWebPage = () => location.protocol === 'http:' || location.protocol === 'https:';
   const siteBase = () => (isWebPage() ? '' : (window.TDM_CONFIG && window.TDM_CONFIG.SITE_URL) || '');
 
@@ -346,6 +362,7 @@
     store.set('active', state.active);
     store.set('mode', state.mode);
     store.set('view', state.view);
+    store.set('pairMode', state.pairMode);
     store.set('lang', state.lang);
   }
 
@@ -414,6 +431,7 @@
     state.active = id;
     save();
     renderKidBar();
+    renderMode();
     renderPantry();
     renderTab();
   }
@@ -584,10 +602,9 @@
     return window.TDM_GALLERY.matchPhoto(meal, allPhotos(), state.active);
   }
 
-  function pictureSrc(meal, desc) {
+  function pictureSrc(meal) {
     const g = photoFor(meal);
-    if (g) return { src: g.src, real: true, title: photoTitle(g) };
-    return { src: window.TDM_GALLERY.illustrate(desc.ingredients.map(i => i.emoji), meal.slot), real: false, title: '' };
+    return g ? { src: g.src, title: photoTitle(g) } : null;
   }
 
   function photoSelect(meal, di, mi) {
@@ -626,11 +643,21 @@
   }
 
   function makePlan() {
-    const cats = new Set(allFoods().filter(f => state.pantry.has(f.id) && !(f.allergen && prof().exclude.includes(f.allergen))).map(f => f.cat));
+    const excl = pairing() ? state.profiles.flatMap(p => p.exclude) : prof().exclude;
+    const cats = new Set(allFoods().filter(f => state.pantry.has(f.id) && !(f.allergen && excl.includes(f.allergen))).map(f => f.cat));
     if (!cats.has('carb') && !cats.has('veg') && !cats.has('fruit')) { toast(t('needFoods')); return; }
     const nDays = state.mode === 'week' ? 7 : 1;
     const startDate = localDate(new Date());
-    state.plans[state.active] = P.generatePlan({ ...genOpts(Date.now() & 0x7fffffff, startDate, nDays), startDate, days: nDays });
+    const seed = Date.now() & 0x7fffffff;
+    if (pairing()) {
+      // One set of ingredients for everyone: the youngest child's menu, rewritten for each of the others.
+      const base = P.familyOrder(state.profiles)[0];
+      const opts = { ...genOpts(seed, startDate, nDays), history: P.usageOf(state.plans[base.id]), hints: null };
+      Object.assign(state.plans, P.generateFamilyPlans({ ...opts, startDate, days: nDays, profiles: state.profiles }));
+      toast(t('madeAll')(state.profiles.map(p => p.name).join(state.lang === 'zh' ? '和' : ' & ')));
+    } else {
+      state.plans[state.active] = P.generatePlan({ ...genOpts(seed, startDate, nDays), startDate, days: nDays });
+    }
     save();
     showTab('menu');
   }
@@ -641,8 +668,10 @@
   const milkSetting = () => ({ type: prof().milkType, ml: +prof().milkMl });
 
   /** Other children's meal in the same slot on the same date that shares at least 2 foods. */
+  /** Another child's meal in the same slot on the same date that shares at least 2 foods. */
   function sameFoodWith(plan, di, meal) {
-    if (meal.slot.startsWith('snack') || state.shared) return null;
+    if (state.shared) return null;
+    if (meal.slot.startsWith('snack') && !meal.pair) return null;
     const date = new Date(new Date(plan.startDate + 'T12:00:00').getTime() + di * 86400000);
     for (const p of state.profiles) {
       if (p.id === state.active) continue;
@@ -651,8 +680,8 @@
       const idx = Math.round((date.getTime() - new Date(other.startDate + 'T12:00:00').getTime()) / 86400000);
       const day = other.days[idx];
       if (!day) continue;
-      const om = day.meals.find(m => m.slot === meal.slot) || day.meals.find(m => ['lunch', 'dinner'].includes(m.slot) && ['lunch', 'dinner'].includes(meal.slot));
-      if (om && om.items.filter(id => meal.items.includes(id)).length >= 2) return p;
+      const om = day.meals.find(m => m.slot === meal.slot) || (meal.pair ? null : day.meals.find(m => ['lunch', 'dinner'].includes(m.slot) && ['lunch', 'dinner'].includes(meal.slot)));
+      if (om && om.items.filter(id => meal.items.includes(id)).length >= Math.min(2, meal.items.length)) return { p, meal: om };
     }
     return null;
   }
@@ -665,7 +694,7 @@
     $('menu-body').hidden = !plan;
     $('menu-body').classList.toggle('readonly', !!state.shared);
     $('print-btn').hidden = window.self !== window.top; // printing is blocked inside embedded viewers
-    $('view-select').value = state.view;
+    renderViewOptions();
     $('menu-heading').textContent = state.shared ? t('menuForKid')(state.shared.name || p.name) : t('menuForKid')(p.name);
     if (!plan) return;
 
@@ -687,6 +716,7 @@
       ? dates.map((d, i) => `<a href="#day-${i}" data-day="${i}">${esc(t('dayName')(d).slice(0, 3))}</a>`).join('')
       : '';
 
+    if (state.view === 'together') { renderTogether(plan, dates); return; }
     const pictures = state.view === 'pictures';
     $('days').innerHTML = plan.days.map((day, di) => `
       <section class="day">
@@ -734,7 +764,13 @@
     };
     const ings = d.ingredients.map(i => `<span class="ing">${i.emoji} ${esc(i.name)} <span class="amt">${esc(amount(i.id))}</span>${i.allergen ? `<span class="tag allergen">${esc(t('allergenTag'))}</span>` : ''}${i.iron ? `<span class="tag iron">${esc(t('ironTag'))}</span>` : ''}</span>`).join('');
     const buddy = sameFoodWith(plan, di, meal);
-    const badge = buddy ? `<span class="badge-same" title="${esc(t('sameFoodTip'))}">🍲 ${esc(t('sameFood')(buddy.name))}</span>` : '';
+    let badge = '';
+    if (buddy && meal.pair) {
+      const title = P.describeMeal(buddy.meal, state.lang, customAll(), buddy.p).title;
+      badge = `<button type="button" class="badge-same" data-view="together" title="${esc(t('sameFoodTip'))}">🍲 ${esc(t('pairBadge')(buddy.p.name, title))}</button>`;
+    } else if (buddy) {
+      badge = `<span class="badge-same" title="${esc(t('sameFoodTip'))}">🍲 ${esc(t('sameFood')(buddy.p.name))}</span>`;
+    }
     return { d, nut, ings, badge };
   }
 
@@ -744,7 +780,7 @@
   function mealHtml(plan, meal, di, mi) {
     const slot = P.SLOTS[meal.slot];
     const { d, nut, ings, badge } = mealParts(plan, meal, di);
-    const pic = pictureSrc(meal, d);
+    const pic = pictureSrc(meal);
     const snack = meal.slot.startsWith('snack');
     return `
       <article class="meal${snack ? ' snack' : ''}">
@@ -759,8 +795,8 @@
           <p class="meal-nutri">${esc(t('perMeal')(Math.round(nut.totals[0]), fmt(nut.totals[1], 1), fmt(nut.totals[5], 1)))}</p>
           <div class="drops">
             <details class="how"><summary>${esc(t('how'))}</summary><ol>${d.steps.map(s => `<li>${esc(s)}</li>`).join('')}</ol></details>
-            <details class="how pic"><summary>${esc(t('picLabel'))}${pic.real ? ' 📷' : ''}</summary>
-              <figure class="pic-figure"><img src="${esc(pic.src)}" alt="${esc(d.title)}" loading="lazy">${pic.real ? '' : `<figcaption>${esc(t('drawnPlate'))}</figcaption>`}</figure>
+            <details class="how pic"><summary>${esc(t('picLabel'))}${pic ? ' 📷' : ''}</summary>
+              ${pic ? `<figure class="pic-figure"><img src="${esc(pic.src)}" alt="${esc(d.title)}" loading="lazy"></figure>` : `<p class="hint small">${esc(t('noPhotoYet'))}</p>`}
               ${photoSelect(meal, di, mi)}
             </details>
           </div>
@@ -771,10 +807,10 @@
   function pictureCard(plan, meal, di, mi) {
     const slot = P.SLOTS[meal.slot];
     const { d, nut, ings, badge } = mealParts(plan, meal, di);
-    const pic = pictureSrc(meal, d);
+    const pic = pictureSrc(meal);
     return `
-      <article class="pic-card">
-        <div class="pic-img"><img src="${esc(pic.src)}" alt="${esc(d.title)}" loading="lazy"><span class="pic-time">${slot.time} · ${esc(slot[state.lang])}</span>${swapBtn(di, mi)}</div>
+      <article class="pic-card${pic ? '' : ' no-pic'}">
+        <div class="pic-img">${pic ? `<img src="${esc(pic.src)}" alt="${esc(d.title)}" loading="lazy">` : ''}<span class="pic-time">${slot.time} · ${esc(slot[state.lang])}</span>${swapBtn(di, mi)}</div>
         <div class="pic-body">
           <h3 class="meal-title">${esc(d.title)}</h3>
           ${badge}
@@ -788,9 +824,69 @@
       </article>`;
   }
 
-  function swap(di, mi) {
-    const plan = activePlan();
-    state.plans[state.active] = P.swapMeal(plan, di, mi, genOpts(Date.now() & 0x7fffffff, plan.startDate, plan.days.length));
+  function renderViewOptions() {
+    const opts = [['list', 'viewList'], ['pictures', 'viewPictures']].concat(pairing() ? [['together', 'viewTogether']] : []);
+    if (!pairing() && state.view === 'together') state.view = 'list';
+    $('view-select').innerHTML = opts.map(([v, k]) => `<option value="${v}"${v === state.view ? ' selected' : ''}>${esc(t(k))}</option>`).join('');
+  }
+
+  /** Every child's version of each shared dish, side by side, with one shared ingredient list. */
+  function renderTogether(plan, dates) {
+    const kids = P.familyOrder(state.profiles);
+    const plans = kids.map(p => state.plans[p.id]);
+    if (!plans.every(x => x && x.family && x.startDate === plan.startDate && x.days.length === plan.days.length)) {
+      $('days').innerHTML = `<p class="empty">${esc(t('togetherNeedsPair'))}</p>`;
+      return;
+    }
+    const catalog = P.buildCatalog(customAll());
+    const youngest = kids[0];
+    $('days').innerHTML = plan.days.map((_, di) => {
+      const blocks = P.SLOT_ORDER.map(slot => {
+        const entries = kids.map((p, k) => {
+          const mi = plans[k].days[di].meals.findIndex(m => m.slot === slot);
+          return mi < 0 ? null : { p, k, mi, meal: plans[k].days[di].meals[mi] };
+        }).filter(Boolean);
+        if (!entries.length) return '';
+        const s = P.SLOTS[slot];
+        const items = entries[0].meal.items;
+        const nuts = entries.map(e => P.mealNutrition(e.meal, customAll(), e.p.age));
+        const shared = entries.length > 1 ? `<div class="together-foods"><b>${esc(t('sharedFoods'))}</b>${items.map(id => {
+          const f = catalog.get(id) || { en: id, zh: id, emoji: '🍽️' };
+          const amounts = entries.map((e, i) => `${esc(e.p.name)} ${id === 'egg' ? esc(t('oneEgg')) : nuts[i].grams[id] + ' g'}`).join(' · ');
+          return `<span class="ing">${f.emoji} ${esc(foodName(f))} <span class="amt">${amounts}</span></span>`;
+        }).join('')}</div>` : '';
+        const cols = entries.map(e => {
+          const d = P.describeMeal(e.meal, state.lang, customAll(), e.p);
+          return `<div class="together-col">
+            <div class="together-who"><span class="kid-tag">${esc(e.p.name)}</span><small>${esc(ageLabel(e.p))}</small>
+              <button type="button" class="swap" data-swap-kid="${esc(e.p.id)}:${di}:${e.mi}" title="${esc(t('swap'))}" aria-label="${esc(t('swap'))}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h13l-3-3M20 15H7l3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+            <h3 class="meal-title">${esc(d.title)}</h3>
+            <details class="how"><summary>${esc(t('how'))}</summary><ol>${d.steps.map(x => `<li>${esc(x)}</li>`).join('')}</ol></details>
+          </div>`;
+        }).join('');
+        const tip = entries.length > 1 && entries[0].p.id === youngest.id ? `<p class="together-tip">🍲 ${esc(t('togetherTip')(youngest.name))}</p>` : '';
+        return `<article class="together"><div class="meal-when"><b>${s.time}</b><span>${esc(s[state.lang])}</span></div>${shared}<div class="together-cols">${cols}</div>${tip}</article>`;
+      }).join('');
+      return `<section class="day"><h2 id="day-${di}">${esc(t('dayName')(dates[di]))}<small>${esc(t('dayDate')(dates[di]))}</small></h2><div class="together-list">${blocks}</div></section>`;
+    }).join('');
+  }
+
+  function swap(di, mi, profileId) {
+    const id = profileId || state.active;
+    const plan = state.plans[id];
+    const meal = plan.days[di].meals[mi];
+    const seed = Date.now() & 0x7fffffff;
+    const familyReady = plan.family && meal.pair && state.profiles.every(p => state.plans[p.id] && state.plans[p.id].family && state.plans[p.id].startDate === plan.startDate);
+    if (familyReady) {
+      const base = P.familyOrder(state.profiles)[0];
+      const opts = { ...genOpts(seed, plan.startDate, plan.days.length), history: P.usageOf(state.plans[base.id]), hints: null, profiles: state.profiles };
+      Object.assign(state.plans, P.swapFamilyMeal(state.plans, opts, id, di, meal.slot));
+    } else {
+      const saved = state.active;
+      state.active = id;
+      state.plans[id] = P.swapMeal(plan, di, mi, genOpts(seed, plan.startDate, plan.days.length));
+      state.active = saved;
+    }
     save();
     renderMenu();
     toast(t('swapped'));
@@ -1147,6 +1243,8 @@
     const p = prof();
     const opts = (list, cur) => list.map(x => `<option value="${x.id}"${x.id === cur ? ' selected' : ''}>${esc(x[state.lang])}</option>`).join('');
     const tex = TEXTURES.find(x => x.id === p.texture) || TEXTURES[1];
+    $('pair-box').hidden = state.profiles.length < 2;
+    $('pair-toggle').checked = state.pairMode;
     $('profile-editor').innerHTML = `
       <div class="field"><label for="kid-name">${esc(t('kidName'))}</label><input id="kid-name" type="text" value="${esc(p.name)}" maxlength="20"></div>
       <div class="field"><label for="kid-age">${esc(t('kidAge'))}</label><select id="kid-age">${opts(AGE_GROUPS, p.age)}</select></div>
@@ -1276,11 +1374,12 @@
   function renderMode() {
     $('mode-day').setAttribute('aria-pressed', state.mode === 'day');
     $('mode-week').setAttribute('aria-pressed', state.mode === 'week');
+    $('make-btn').textContent = pairing() ? t('makeAll') : t('make');
   }
 
   function renderAll() {
     applyLang();
-    $('view-select').innerHTML = `<option value="list">${esc(t('viewList'))}</option><option value="pictures">${esc(t('viewPictures'))}</option>`;
+    renderViewOptions();
     renderKidBar();
     renderPantry();
     renderUnknown();
@@ -1332,6 +1431,10 @@
       state.unknown.splice(+unk.dataset.unknown, 1);
       renderUnknown(); return;
     }
+    const swk = el.closest('[data-swap-kid]');
+    if (swk) { const [pid, di, mi] = swk.dataset.swapKid.split(':'); swap(+di, +mi, pid); return; }
+    const vw = el.closest('[data-view]');
+    if (vw) { state.view = vw.dataset.view; save(); renderMenu(); window.scrollTo({ top: 0 }); return; }
     const sw = el.closest('[data-swap]');
     if (sw) { const [di, mi] = sw.dataset.swap.split(':').map(Number); swap(di, mi); return; }
     const dayLink = el.closest('[data-day]');
@@ -1377,6 +1480,7 @@
     const el = e.target;
     if (el.dataset.photo) { const [di, mi] = el.dataset.photo.split(':').map(Number); setMealPhoto(di, mi, el.value); return; }
     if (el.id === 'view-select') { state.view = el.value; save(); renderMenu(); return; }
+    if (el.id === 'pair-toggle') { state.pairMode = el.checked; save(); renderMode(); return; }
     if (el.id === 'kid-age') {
       const age = P.ageGroup(el.value);
       updateProfile({ age: age.id, texture: age.texture, meals: age.meals.slice(), milkMl: age.milkMl });
