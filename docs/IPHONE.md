@@ -23,7 +23,7 @@ App 需要一个网址，家人才能打开。选一个即可：
 2. 仓库 **Settings → Pages → Build and deployment → Source** 选 **GitHub Actions**。
 3. 自动部署后，网址是 `https://helenhuangmath.github.io/Toddler_daily_menu/`。
 
-> 注意：这个仓库目前是**私有**的。私有仓库用 GitHub Pages 需要 GitHub Pro（付费）。也可以把仓库改成公开，代码里没有任何个人信息（API 密钥只存在各自的手机上）。
+> 注意：这个仓库目前是**私有**的。私有仓库用 GitHub Pages 需要 GitHub Pro（付费）。**不需要把仓库改成公开**：下面的 B 方案可以直接连接私有仓库，免费。原生 App（方式二）也完全不需要公开仓库。
 
 **B. Netlify 或 Cloudflare Pages（免费，可连私有仓库）**
 1. 用 GitHub 账号登录 netlify.com（或 pages.cloudflare.com）。
@@ -36,7 +36,7 @@ App 需要一个网址，家人才能打开。选一个即可：
 1. 用 **Safari** 打开网址（必须是 Safari）。
 2. 点底部的 **分享** 按钮（方框加向上箭头）。
 3. 往下滑，点 **添加到主屏幕** → **添加**。
-4. 主屏幕上会出现绿色的小勺图标，点开就是全屏 App，没网也能用。
+4. 主屏幕上会出现橙色的碗形图标“小勺辅食”，点开就是全屏 App，没网也能用。
 
 App 第一次在 iPhone 的 Safari 里打开时，也会显示这个安装提示。
 

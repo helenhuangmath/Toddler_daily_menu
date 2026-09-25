@@ -80,7 +80,7 @@ a { color: var(--accent); }
   max-width: 760px; margin: 0 auto;
 }
 .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.brand-mark { width: 34px; height: 34px; flex: none; transform: rotate(-20deg); }
+.brand-mark { width: 36px; height: 36px; flex: none; border-radius: 9px; }
 .brand-name { font-size: 1.3rem; }
 .brand-sub { font-size: .8rem; color: var(--muted); }
 .lang { display: flex; background: var(--surface-2); border-radius: 999px; padding: 3px; flex: none; }

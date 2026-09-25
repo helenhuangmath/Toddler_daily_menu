@@ -1,14 +1,29 @@
 {
-  "name": "Little Spoon Menu · 小勺辅食菜单",
-  "short_name": "Little Spoon",
+  "name": "小勺辅食 · Little Spoon Menu",
+  "short_name": "小勺辅食",
   "description": "Daily and weekly soft-food menus for a 14-month-old from what you have at home.",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#F3F6F1",
+  "background_color": "#F7962C",
   "theme_color": "#2E7D62",
   "icons": [
-    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml" },
-    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
   ]
 }

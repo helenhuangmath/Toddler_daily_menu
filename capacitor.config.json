@@ -1,6 +1,6 @@
 {
   "appId": "com.littlespoon.menu",
-  "appName": "Little Spoon",
+  "appName": "小勺辅食",
   "webDir": "www",
   "ios": {
     "contentInset": "never"
