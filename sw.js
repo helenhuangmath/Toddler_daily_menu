@@ -1,5 +1,5 @@
 // Network-first service worker: always fresh when online, still opens offline.
-const CACHE = 'little-spoon-v1';
+const CACHE = 'little-spoon-v2';
 const ASSETS = ['./', 'index.html', 'css/style.css', 'js/data.js', 'js/planner.js', 'js/vision.js', 'js/app.js', 'manifest.webmanifest', 'icons/icon.svg'];
 
 self.addEventListener('install', e => {

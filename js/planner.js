@@ -195,7 +195,7 @@
       const veg = add(pick(ctx, 'veg', day, o));
       const protein = add(pick(ctx, 'protein', day, o));
       let fat = null;
-      if (ctx.rand() < 0.5) fat = add(pick(ctx, 'fat', day, { ...o, filter: f => f.id === 'oliveoil' || f.id === 'butter' || f.id === 'tahini' }));
+      if (ctx.rand() < 0.8) fat = add(pick(ctx, 'fat', day, { ...o, filter: f => f.id === 'oliveoil' || f.id === 'butter' || f.id === 'tahini' }));
       meal.main = carb ? carb.id : null;
       meal.veg = veg ? veg.id : null;
       meal.protein = protein ? protein.id : null;
@@ -474,8 +474,78 @@
     return { title, steps, ingredients };
   }
 
+  // ---------- portions & nutrition ----------
+
+  const DEFAULT_PORTION = { carb: 40, veg: 30, fruit: 40, protein: 25, dairy: 50, fat: 5 };
+
+  /** Weighed dry (grains, pasta, lentils, prunes) rather than raw. */
+  function isDry(f) {
+    return (f.cat === 'carb' && f.form && f.form !== 'mash') || f.id === 'lentils' || f.id === 'prune';
+  }
+
+  function round5(g) {
+    return g < 10 ? Math.round(g) : Math.round(g / 5) * 5;
+  }
+
+  /** Suggested grams of one ingredient in one meal, for a 12–24 month old. */
+  function portionFor(meal, id, catalog) {
+    const f = catalog.get(id);
+    if (!f) return 0;
+    const base = f.portion || DEFAULT_PORTION[f.cat] || 30;
+    if (id === 'egg') return 50; // one egg
+    let g = base;
+    const snack = meal.slot === 'snack1' || meal.slot === 'snack2';
+    if (snack) {
+      if (f.cat === 'fruit') g = meal.template === 'snack_two_fruit' ? base * 0.75 : base * 1.25;
+      else if (f.id === 'yogurt') g = 60;
+    } else if (meal.slot === 'breakfast') {
+      if (f.cat === 'carb' && f.form === 'mash') g = base * 0.8;
+      else if (f.cat === 'dairy') g = base * 0.85;
+      else if (f.id === 'avocado') g = base * 0.75;
+    }
+    return round5(g);
+  }
+
+  function zeroTotals() {
+    return DATA.NUTRIENTS.map(() => 0);
+  }
+
+  /** { grams: {id: g}, totals: [..NUTRIENTS], uncounted: [id] } for one meal. */
+  function mealNutrition(meal, customFoods) {
+    const catalog = buildCatalog(customFoods);
+    const grams = {};
+    const totals = zeroTotals();
+    const uncounted = [];
+    for (const id of meal.items) {
+      const g = portionFor(meal, id, catalog);
+      grams[id] = g;
+      const f = catalog.get(id);
+      if (!f || !f.n) { uncounted.push(id); continue; }
+      f.n.forEach((v, i) => { totals[i] += (v * g) / 100; });
+    }
+    return { grams, totals, uncounted };
+  }
+
+  /**
+   * Daily totals: food + milk. milk = { type: 'whole'|'breast'|'formula', ml }.
+   * Returns { food, milk, total } arrays in NUTRIENTS order, plus uncounted custom foods.
+   */
+  function dayNutrition(day, customFoods, milk) {
+    const food = zeroTotals();
+    const uncounted = new Set();
+    for (const m of day.meals) {
+      const r = mealNutrition(m, customFoods);
+      r.totals.forEach((v, i) => { food[i] += v; });
+      r.uncounted.forEach(id => uncounted.add(id));
+    }
+    const mk = DATA.MILKS.find(x => x.id === (milk && milk.type)) || DATA.MILKS[0];
+    const ml = milk && milk.ml != null ? milk.ml : 400;
+    const milkT = mk.n.map(v => (v * ml) / 100);
+    return { food, milk: milkT, total: food.map((v, i) => v + milkT[i]), uncounted: [...uncounted] };
+  }
+
   const api = {
-    SLOTS, generatePlan, swapMeal, describeMeal, parseFoodText, planStats, usageOf, buildCatalog, slotsFor, comboKey, mulberry32,
+    SLOTS, portionFor, mealNutrition, dayNutrition, isDry, generatePlan, swapMeal, describeMeal, parseFoodText, planStats, usageOf, buildCatalog, slotsFor, comboKey, mulberry32,
   };
   root.TDM_PLANNER = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

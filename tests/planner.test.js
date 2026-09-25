@@ -118,3 +118,42 @@ test('custom foods are used in the plan', () => {
   const m = plan.days[0].meals.find(x => x.items.includes('custom:pineapple'));
   assert.ok(P.describeMeal(m, 'zh', custom, 'puree').title.includes('菠萝'));
 });
+
+test('every food has a portion and a full nutrient row', () => {
+  for (const f of D.FOODS) {
+    assert.ok(f.portion > 0, f.id);
+    assert.strictEqual(f.n.length, D.NUTRIENTS.length, f.id);
+    assert.ok(f.n.every(v => typeof v === 'number' && v >= 0), f.id);
+  }
+});
+
+test('portions follow the meal: one egg, bigger fruit at snacks, dry weight for grains', () => {
+  const cat = P.buildCatalog([]);
+  assert.strictEqual(P.portionFor({ slot: 'lunch', items: ['egg'] }, 'egg', cat), 50);
+  const snackFruit = P.portionFor({ slot: 'snack1', template: 'snack_fruit', items: ['banana'] }, 'banana', cat);
+  const twoFruit = P.portionFor({ slot: 'snack1', template: 'snack_two_fruit', items: ['banana', 'pear'] }, 'banana', cat);
+  assert.ok(snackFruit > twoFruit);
+  assert.ok(P.isDry(cat.get('rice')) && !P.isDry(cat.get('potato')));
+});
+
+test('daily nutrition is in a sensible range for a 14-month-old and includes milk', () => {
+  for (const seed of [1, 2, 3]) {
+    const plan = P.generatePlan({ pantry: D.STARTER_PANTRY, days: 7, settings: {}, seed });
+    for (const d of plan.days) {
+      const r = P.dayNutrition(d, [], { type: 'whole', ml: 400 });
+      assert.ok(r.total[0] > 550 && r.total[0] < 1100, `kcal ${r.total[0]}`);
+      assert.ok(r.total[1] >= 13, `protein ${r.total[1]}`);
+      assert.ok(Math.abs(r.milk[0] - 244) < 1);
+      assert.ok(Math.abs(r.total[6] - r.food[6] - r.milk[6]) < 1e-9);
+    }
+  }
+  const noMilk = P.dayNutrition({ meals: [] }, [], { type: 'breast', ml: 0 });
+  assert.ok(noMilk.total.every(v => v === 0));
+});
+
+test('custom foods without data are reported, not guessed', () => {
+  const custom = [{ id: 'custom:pineapple', cat: 'fruit', custom: true, en: 'pineapple', zh: '菠萝' }];
+  const r = P.mealNutrition({ slot: 'snack1', template: 'snack_fruit', items: ['custom:pineapple'] }, custom);
+  assert.deepStrictEqual(r.uncounted, ['custom:pineapple']);
+  assert.ok(r.grams['custom:pineapple'] > 0);
+});
