@@ -316,6 +316,18 @@ input[type="search"] { flex: 1; min-width: 0; }
 .photo-foods { font-size: 1rem; letter-spacing: 2px; }
 .photo-tags { display: flex; gap: 4px; flex-wrap: wrap; }
 .photo-tags .tag { background: var(--accent-soft); color: var(--accent); }
+.idea-status { font-size: .8rem; line-height: 1.35; }
+.idea-status.ok { color: var(--accent); font-weight: 700; }
+.idea-status.miss { color: var(--warm-ink); }
+.idea-status.extra { color: var(--muted); }
+.ai-hint { background: var(--surface-2); border-radius: 10px; padding: 8px 12px; }
+#draft-ai { align-self: flex-start; }
+.draft-single { display: flex; flex-direction: column; gap: 10px; }
+.draft-multi { display: flex; flex-direction: column; gap: 8px; }
+.dish-pick { display: flex; gap: 10px; align-items: flex-start; background: var(--bg); border-radius: 10px; padding: 8px 10px; cursor: pointer; }
+.dish-pick input { margin-top: 4px; accent-color: var(--accent); width: 18px; height: 18px; flex: none; }
+.dish-pick span { display: flex; flex-direction: column; }
+.dish-pick small { color: var(--muted); }
 .addmenu { display: flex; flex-direction: column; gap: 6px; }
 .addmenu select { width: 100%; padding: 6px 8px; font-size: .85rem; }
 

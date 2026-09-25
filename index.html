@@ -124,13 +124,12 @@
   <!-- ============ IDEAS ============ -->
   <section id="panel-ideas" class="panel" role="tabpanel" hidden>
     <div class="block">
-      <h2 id="ideas-title">Cooking ideas</h2>
-      <p class="hint" data-i18n="ideasHint">Ways to cook beyond boiling and mixed purees.</p>
-      <ul class="ideas" id="ideas-list"></ul>
-    </div>
-    <div class="block">
-      <h2 data-i18n="myPhotosTitle">My dish photos</h2>
-      <p class="hint" data-i18n="myPhotosHint">Saved on this phone only.</p>
+      <h2 data-i18n="myPhotosTitle">My menu ideas</h2>
+      <p class="hint" data-i18n="myPhotosHint">Save pictures of dishes or menus you like.</p>
+      <p class="hint small ai-hint" id="ai-hint" data-i18n="aiNeedKey" hidden></p>
+      <label class="view-pick"><span data-i18n="ideaRateLabel">Use my ideas in new menus</span>
+        <select id="idea-rate"></select>
+      </label>
       <label class="btn btn-ghost file-btn" for="draft-input">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
         <span data-i18n="uploadBtn">Add a dish photo</span>
@@ -139,11 +138,21 @@
       <div id="draft" class="draft" hidden>
         <img id="draft-img" alt="">
         <div class="draft-fields">
-          <div class="field"><label for="draft-title" data-i18n="dishName">Dish name</label><input id="draft-title" type="text" maxlength="60" data-i18n-ph="dishNamePh" placeholder="e.g. pumpkin chicken congee"></div>
-          <p class="hint small" id="draft-foods"></p>
-          <div class="field"><label for="draft-notes" data-i18n="dishNotes">How to make</label><textarea id="draft-notes" rows="3"></textarea></div>
-          <div class="field"><span class="field-label" data-i18n="forMeals">Meal</span><div class="checks" id="draft-slots"></div></div>
-          <div class="field"><span class="field-label" data-i18n="forWho">For</span><div class="checks" id="draft-who"></div></div>
+          <button type="button" class="btn btn-small" id="draft-ai">✨</button>
+          <div id="draft-status" class="status" hidden></div>
+          <div id="draft-multi" class="draft-multi" hidden>
+            <div id="draft-multi-list"></div>
+          </div>
+          <div id="draft-single" class="draft-single">
+            <div class="field"><label for="draft-title" data-i18n="dishName">Dish name</label><input id="draft-title" type="text" maxlength="60" data-i18n-ph="dishNamePh" placeholder="e.g. pumpkin chicken congee"></div>
+            <div class="field"><span class="field-label" data-i18n="draftFoodsLabel">Ingredients</span>
+              <div class="chips" id="draft-foods"></div>
+              <div class="row"><input id="draft-add-food" type="text" autocomplete="off" data-i18n-ph="addFoodPh" placeholder="Add an ingredient"><button type="button" class="btn btn-small btn-ghost" id="draft-add-food-btn" data-i18n="add">Add</button></div>
+            </div>
+            <div class="field"><label for="draft-notes" data-i18n="dishNotes">How to make</label><textarea id="draft-notes" rows="4"></textarea></div>
+            <div class="field"><span class="field-label" data-i18n="forMeals">Meal</span><div class="checks" id="draft-slots"></div></div>
+            <div class="field"><span class="field-label" data-i18n="forWho">For</span><div class="checks" id="draft-who"></div></div>
+          </div>
           <div class="row tight">
             <button type="button" class="btn btn-small" id="draft-save" data-i18n="savePhoto">Save photo</button>
             <button type="button" class="btn btn-small btn-ghost" id="draft-cancel" data-i18n="cancel">Cancel</button>
@@ -157,6 +166,11 @@
       <p class="hint" data-i18n="sharedHint">Photos in the gallery folder on GitHub.</p>
       <p class="small"><a id="shared-how" href="https://github.com/helenhuangmath/Toddler_daily_menu/tree/main/gallery" target="_blank" rel="noopener" data-i18n="sharedHow">How to add family photos</a></p>
       <div id="family-photos"></div>
+    </div>
+    <div class="block">
+      <h2 id="ideas-title">Cooking ideas</h2>
+      <p class="hint" data-i18n="ideasHint">Ways to cook beyond boiling and mixed purees.</p>
+      <ul class="ideas" id="ideas-list"></ul>
     </div>
   </section>
 

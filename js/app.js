@@ -108,8 +108,18 @@
       ideasTitle: name => `Cooking ideas for ${name}`,
       ideasHint: 'Ways to cook beyond boiling and mixed purees. The menu rotates through the ones that suit this stage.',
       nextStage: 'Next step',
-      myPhotosTitle: 'My dish photos', uploadBtn: 'Add a dish photo',
-      myPhotosHint: 'Saved on this phone only. For photos the whole family can see, use the family gallery below.',
+      myPhotosTitle: 'My menu ideas', uploadBtn: 'Add a picture',
+      ideaRateLabel: 'Use my ideas in new menus', rateOff: 'Never', rateSome: 'Sometimes', rateOften: 'Often',
+      aiRead: '✨ Read this picture with AI', aiShort: '✨ AI read', aiReading: 'Reading the picture…',
+      aiNone: 'No dish found in this picture. Type the dish name instead.', aiDone: 'Filled in from the picture. Check it, then save.',
+      aiFound: n => `Found ${n} dishes. Untick any you don't want, then save.`,
+      aiNeedKey: 'With an Anthropic API key (Settings), AI reads each picture: dish name, ingredients, which child it suits and how to make it. Without one, type the dish name and the ingredients are picked from it.',
+      saveDishes: n => `Save ${n} dishes`, photoSavedN: n => `Saved ${n} dishes.`, editPhoto: 'Edit',
+      ideaReady: 'You have everything at home', ideaMissing: list => `Still need: ${list}`, ideaExtra: list => `Also uses: ${list}`,
+      ideaNoFoods: 'No ingredients yet. Edit it, or let AI read it.', addFoodPh: 'Add an ingredient, e.g. egg',
+      draftFoodsLabel: 'Ingredients (tap to remove or add back)',
+      statIdeas: n => `<b>${n}</b> from my ideas`,
+      myPhotosHint: 'Save pictures of dishes or menus you like. New menus use them when you have the foods at home. Saved on this phone only; for pictures the whole family sees, use the family gallery below.',
       choosePhoto: 'Choose a photo', dishName: 'Dish name', dishNamePh: 'e.g. pumpkin chicken congee', dishNotes: 'How to make (optional, one step per line)',
       forMeals: 'Meal', forWho: 'For', foundFoods: 'Foods found in the name:',
       noFoodsFound: 'No foods recognised yet. Put food names in the dish name, e.g. “pumpkin chicken congee”.',
@@ -229,8 +239,18 @@
       ideasTitle: name => `适合${name}的做法`,
       ideasHint: '除了水煮和混合打泥，还可以这样做。菜单会轮换使用适合这个阶段的做法。',
       nextStage: '下一阶段',
-      myPhotosTitle: '我的菜谱照片', uploadBtn: '添加菜的照片',
-      myPhotosHint: '只保存在这部手机上。想让全家都看到，请用下面的家庭图库。',
+      myPhotosTitle: '我的菜单灵感', uploadBtn: '添加图片',
+      ideaRateLabel: '生成菜单时用我的灵感菜', rateOff: '不用', rateSome: '有时', rateOften: '经常',
+      aiRead: '✨ 用 AI 识别这张图', aiShort: '✨ AI 识别', aiReading: '正在识别图片…',
+      aiNone: '没有在图里认出菜，请直接输入菜名。', aiDone: '已根据图片填好，检查后保存。',
+      aiFound: n => `识别到 ${n} 道菜，取消勾选不要的，再保存。`,
+      aiNeedKey: '在“设置”里填写 Anthropic API 密钥后，AI 会读懂每张图：菜名、食材、适合哪个孩子和做法。没有密钥时，输入菜名也能自动认出里面的食材。',
+      saveDishes: n => `保存 ${n} 道菜`, photoSavedN: n => `已保存 ${n} 道菜。`, editPhoto: '编辑',
+      ideaReady: '家里的食材够做', ideaMissing: list => `还差：${list}`, ideaExtra: list => `另外需要：${list}`,
+      ideaNoFoods: '还没有食材信息：编辑一下或用 AI 识别。', addFoodPh: '添加食材，例如：鸡蛋',
+      draftFoodsLabel: '食材（点一下去掉或加回）',
+      statIdeas: n => `<b>${n}</b> 道来自我的灵感`,
+      myPhotosHint: '保存喜欢的菜或菜单图片。家里食材够的时候，新菜单会用上这些灵感菜。只保存在这部手机上；想让全家都看到，请用下面的家庭图库。',
       choosePhoto: '选择照片', dishName: '菜名', dishNamePh: '例如：南瓜鸡肉粥', dishNotes: '做法（可选，每行一步）',
       forMeals: '餐次', forWho: '给谁', foundFoods: '从菜名识别到的食材：',
       noFoodsFound: '还没识别到食材。菜名里写上食材，例如“南瓜鸡肉粥”。',
@@ -302,7 +322,8 @@
     apiKey: store.get('apiKey', ''),
     unknown: [],
     photos: { local: [], shared: [] },
-    draft: null, // photo being added on the Ideas tab
+    draft: null, // idea picture being added or edited on the Ideas tab
+    ideaRate: store.get('ideaRate', 0.3), // how often new menus use the family's own ideas
   };
   if (!state.profiles.some(p => p.id === state.active)) state.active = state.profiles[0].id;
 
@@ -485,11 +506,7 @@
         <button type="button" class="btn btn-small" id="review-add">${esc(t('photoAdd'))}</button>`;
       review._items = items;
     } catch (err) {
-      const code = String(err && err.message || '');
-      const key = code === 'no-key' ? 'errNoKey' : code === 'bad-key' ? 'errBadKey' : code === 'rate-limit' ? 'errRate'
-        : code === 'network' ? 'errNetwork' : code === 'refused' ? 'errRefused' : code === 'image-unreadable' ? 'errImage'
-          : /Failed to fetch|import|NetworkError/i.test(code) ? 'errNetwork' : 'errGeneric';
-      setStatus(status, t(key), 'err');
+      setStatus(status, t(aiErrorKey(err)), 'err');
       console.error(err);
     }
   }
@@ -513,23 +530,41 @@
 
   // ---------- photo library ----------
   const allPhotos = () => state.photos.local.concat(state.photos.shared);
+  const photoTitle = g => (g.titles && (g.titles[state.lang] || g.titles.zh || g.titles.en)) || g.title || '—';
+  const kidsForAges = ages => (ages && ages.length ? state.profiles.filter(p => ages.includes(p.age)).map(p => p.id) : []);
 
   // Family photos are tagged by file name: meal words and children's names.
   const SLOT_WORDS = {
     breakfast: ['早餐', 'breakfast'], lunch: ['午餐', '午饭', 'lunch'], dinner: ['晚餐', '晚饭', 'dinner'],
     snack1: ['加餐', '点心', 'snack'], snack2: ['加餐', '点心', 'snack'],
   };
+  // AI readings of family-gallery pictures, kept on this phone: { photoId: [dish] }.
+  const sharedMeta = () => store.get('sharedMeta', {}) || {};
+
   function enrichShared(items) {
-    return items.map(g => {
+    const meta = sharedMeta();
+    const out = [];
+    for (const g of items) {
+      const dishes = meta[g.id];
+      if (Array.isArray(dishes) && dishes.length) {
+        dishes.forEach((d, i) => out.push({
+          ...g, id: dishes.length > 1 ? `${g.id}#${i}` : g.id, title: d.titles.zh || d.titles.en, titles: d.titles, steps: d.steps,
+          missing: d.missing || [], foods: d.foods, slots: d.slots, who: kidsForAges(d.ages), ai: true,
+        }));
+        continue;
+      }
       const tags = (g.tags || []).map(x => x.toLowerCase());
       const slots = SLOT_IDS.filter(s => SLOT_WORDS[s].some(w => tags.includes(w)));
       const who = state.profiles.filter(p => tags.includes(p.name.toLowerCase())).map(p => p.id);
-      return { ...g, slots, who, foods: P.foodsInText(g.title + ' ' + (g.notes || ''), state.custom) };
-    });
+      out.push({ ...g, slots, who, foods: P.foodsInText(g.title + ' ' + (g.notes || ''), state.custom) });
+    }
+    return out;
   }
 
+  let rawShared = [];
   async function loadPhotos() {
     const [local, shared] = await Promise.all([window.TDM_GALLERY.listLocal(), window.TDM_GALLERY.loadShared(siteBase())]);
+    rawShared = shared;
     state.photos.local = local;
     state.photos.shared = enrichShared(shared);
     renderTab();
@@ -539,7 +574,7 @@
   function galleryForPlanner() {
     const ageOf = id => (state.profiles.find(p => p.id === id) || {}).age;
     return allPhotos().filter(g => g.foods.length).map(g => ({
-      id: g.id, title: g.title, notes: g.notes, foods: g.foods, slots: g.slots, ages: (g.who || []).map(ageOf).filter(Boolean),
+      id: g.id, title: g.title, notes: g.notes, titles: g.titles, steps: g.steps, foods: g.foods, slots: g.slots, ages: (g.who || []).map(ageOf).filter(Boolean),
     }));
   }
 
@@ -551,14 +586,14 @@
 
   function pictureSrc(meal, desc) {
     const g = photoFor(meal);
-    if (g) return { src: g.src, real: true, title: g.title };
+    if (g) return { src: g.src, real: true, title: photoTitle(g) };
     return { src: window.TDM_GALLERY.illustrate(desc.ingredients.map(i => i.emoji), meal.slot), real: false, title: '' };
   }
 
   function photoSelect(meal, di, mi) {
     const cur = meal.photo || 'auto';
     const opt = (v, label) => `<option value="${esc(v)}"${v === cur ? ' selected' : ''}>${esc(label)}</option>`;
-    const group = (label, list) => (list.length ? `<optgroup label="${esc(label)}">${list.map(g => opt(g.id, g.title || '—')).join('')}</optgroup>` : '');
+    const group = (label, list) => (list.length ? `<optgroup label="${esc(label)}">${list.map(g => opt(g.id, photoTitle(g))).join('')}</optgroup>` : '');
     return `<label class="pic-select"><span>${esc(t('picLabel'))}</span><select data-photo="${di}:${mi}" id="photo-${di}-${mi}">
       ${opt('auto', t('photoAuto'))}${opt('none', t('photoNoneOpt'))}${group(t('myPhotosGroup'), state.photos.local)}${group(t('familyPhotosGroup'), state.photos.shared)}</select></label>`;
   }
@@ -586,7 +621,7 @@
   function genOpts(seed, startDate, nDays) {
     return {
       pantry: [...state.pantry], customFoods: state.custom, settings: prof(), seed,
-      history: P.usageOf(activePlan()), gallery: galleryForPlanner(), hints: hintsFor(startDate, nDays),
+      history: P.usageOf(activePlan()), gallery: galleryForPlanner(), galleryRate: state.ideaRate, hints: hintsFor(startDate, nDays),
     };
   }
 
@@ -638,7 +673,7 @@
     const kcal = plan.days.reduce((sum, d) => sum + P.dayNutrition(d, customAll(), milkSetting(), p.age).total[0], 0) / plan.days.length;
     $('summary').innerHTML = [
       t('statDays')(st.days), t('statFoods')(st.distinct), t('statKcal')(Math.round(kcal)), t('statIron')(st.ironDays, st.days),
-    ].map(s => `<span class="pill">${s}</span>`).join('');
+    ].concat(st.ideas ? [t('statIdeas')(st.ideas)] : []).map(s => `<span class="pill">${s}</span>`).join('');
 
     $('warnings').innerHTML = (plan.warnings || []).map(w => {
       const c = w.cat ? t('catNames')[w.cat] : '';
@@ -805,7 +840,7 @@
     } catch (e) { fallback(); }
   }
 
-  // ---------- ideas tab: cooking methods + photo library ----------
+  // ---------- ideas tab: cooking methods + menu-idea pictures ----------
   function renderIdeas() {
     const p = prof();
     const stage = (TEXTURES.find(x => x.id === p.texture) || TEXTURES[1]).stage;
@@ -814,12 +849,25 @@
     const next = COOKING_IDEAS.filter(i => i.minStage === stage + 1);
     const card = (i, later) => `<li class="idea${later ? ' later' : ''}"><span class="idea-emoji" aria-hidden="true">${i.emoji}</span><div><b>${esc(i[state.lang])}</b>${later ? ` <span class="tag">${esc(t('nextStage'))}</span>` : ''}<p>${esc(i.body[state.lang])}</p></div></li>`;
     $('ideas-list').innerHTML = now.map(i => card(i, false)).join('') + next.map(i => card(i, true)).join('');
+    $('idea-rate').innerHTML = [[0, 'rateOff'], [0.3, 'rateSome'], [0.6, 'rateOften']].map(([v, k]) => `<option value="${v}"${v === state.ideaRate ? ' selected' : ''}>${esc(t(k))}</option>`).join('');
+    $('ai-hint').hidden = !!state.apiKey;
     renderDraft();
     $('my-photos').innerHTML = photoGrid(state.photos.local, true);
     $('family-photos').innerHTML = state.photos.shared.length ? photoGrid(state.photos.shared, false) : `<p class="hint">${esc(t('sharedEmpty'))}</p>`;
-    const repo = 'https://github.com/helenhuangmath/Toddler_daily_menu/tree/main/gallery';
-    $('shared-how').href = repo;
   }
+
+  /** Can this idea be cooked with what is at home? */
+  function ideaStatus(g) {
+    if (!g.foods.length) return `<p class="idea-status miss">${esc(t('ideaNoFoods'))}</p>`;
+    const catalog = P.buildCatalog(state.custom);
+    const sep = state.lang === 'zh' ? '、' : ', ';
+    const need = g.foods.filter(id => !state.pantry.has(id)).map(id => foodName(catalog.get(id) || { en: id, zh: id }));
+    const extra = (g.missing || []).map(m => (state.lang === 'zh' ? m.zh : m.en)).filter(Boolean);
+    return (need.length ? `<p class="idea-status miss">${esc(t('ideaMissing')(need.join(sep)))}</p>` : `<p class="idea-status ok">✅ ${esc(t('ideaReady'))}</p>`)
+      + (extra.length ? `<p class="idea-status extra">${esc(t('ideaExtra')(extra.join(sep)))}</p>` : '');
+  }
+
+  const boxId = id => 'addmenu-' + id.replace(/[^a-z0-9]/gi, '_');
 
   function photoGrid(list, local) {
     if (!list.length) return `<p class="hint">${esc(t('galleryEmpty'))}</p>`;
@@ -828,23 +876,26 @@
     const kidName = id => (state.profiles.find(p => p.id === id) || {}).name || '';
     return `<div class="photo-grid">${list.map(g => `
       <article class="photo-card">
-        <img src="${esc(g.src)}" alt="${esc(g.title)}" loading="lazy">
+        <img src="${esc(g.src)}" alt="${esc(photoTitle(g))}" loading="lazy">
         <div class="photo-body">
-          <b>${esc(g.title || '—')}</b>
+          <b>${esc(photoTitle(g))}</b>
           <div class="photo-foods">${g.foods.map(id => (catalog.get(id) || {}).emoji || '').join(' ')}</div>
           ${g.slots.length || g.who.length ? `<div class="photo-tags">${[...new Set(g.slots.map(slotName))].concat(g.who.map(kidName)).map(x => `<span class="tag">${esc(x)}</span>`).join('')}</div>` : ''}
+          ${ideaStatus(g)}
           <div class="row tight">
             <button type="button" class="btn btn-small" data-addmenu="${esc(g.id)}">${esc(t('addToMenu'))}</button>
-            ${local ? `<button type="button" class="btn btn-small btn-ghost" data-delphoto="${esc(g.id)}">${esc(t('remove'))}</button>` : ''}
+            ${local ? `<button type="button" class="btn btn-small btn-ghost" data-editphoto="${esc(g.id)}">${esc(t('editPhoto'))}</button>
+              <button type="button" class="btn btn-small btn-ghost" data-delphoto="${esc(g.id)}">${esc(t('remove'))}</button>`
+              : state.apiKey ? `<button type="button" class="btn btn-small btn-ghost" data-aishared="${esc(g.id.split('#')[0])}">${esc(t('aiShort'))}</button>` : ''}
           </div>
-          <div class="addmenu" id="addmenu-${esc(g.id.replace(/[^a-z0-9]/gi, '_'))}" hidden></div>
+          <div class="addmenu" id="${boxId(g.id)}" hidden></div>
         </div>
       </article>`).join('')}</div>`;
   }
 
   function openAddToMenu(id) {
     const plan = activePlan();
-    const box = $('addmenu-' + id.replace(/[^a-z0-9]/gi, '_'));
+    const box = $(boxId(id));
     if (!plan) { toast(t('noMenuYet')); return; }
     const g = allPhotos().find(x => x.id === id);
     const start = new Date(plan.startDate + 'T12:00:00');
@@ -862,7 +913,7 @@
 
   function doAddToMenu(id) {
     const plan = activePlan();
-    const key = 'addmenu-' + id.replace(/[^a-z0-9]/gi, '_');
+    const key = boxId(id);
     const di = +$('am-day-' + key).value;
     const slot = $('am-slot-' + key).value;
     const mi = plan.days[di].meals.findIndex(m => m.slot === slot);
@@ -874,49 +925,184 @@
     toast(t('addedToMenu'));
   }
 
-  // Draft of a photo being added.
+  function aiErrorKey(err) {
+    const code = String(err && err.message || '');
+    return code === 'no-key' ? 'errNoKey' : code === 'bad-key' ? 'errBadKey' : code === 'rate-limit' ? 'errRate'
+      : code === 'network' ? 'errNetwork' : code === 'refused' ? 'errRefused' : code === 'image-unreadable' ? 'errImage'
+        : /Failed to fetch|import|NetworkError/i.test(code) ? 'errNetwork' : 'errGeneric';
+  }
+
+  // ----- the idea being added or edited -----
+  // draft: { mode: 'new'|'edit', id, file, preview, added: Set, removed: Set, slots, who, titles, steps, missing, dishes, busy }
+
+  function draftFoods() {
+    const d = state.draft;
+    const detected = P.foodsInText($('draft-title').value + ' ' + $('draft-notes').value, state.custom);
+    return [...new Set(detected.concat([...d.added]))].filter(id => !d.removed.has(id));
+  }
+
   function renderDraft() {
     const d = state.draft;
     $('draft').hidden = !d;
     if (!d) return;
     $('draft-img').src = d.preview;
-    const foods = P.foodsInText($('draft-title').value + ' ' + $('draft-notes').value, state.custom);
+    $('draft-ai').hidden = !state.apiKey;
+    $('draft-ai').disabled = !!d.busy;
+    $('draft-ai').textContent = d.busy ? t('aiReading') : t('aiRead');
+    const multi = Array.isArray(d.dishes) && d.dishes.length > 1;
+    $('draft-single').hidden = multi;
+    $('draft-multi').hidden = !multi;
     const catalog = P.buildCatalog(state.custom);
-    $('draft-foods').innerHTML = foods.length
-      ? `${esc(t('foundFoods'))} ${foods.map(id => { const f = catalog.get(id); return `<span class="ing">${f.emoji} ${esc(foodName(f))}</span>`; }).join(' ')}`
-      : esc(t('noFoodsFound'));
+    if (multi) {
+      $('draft-multi-list').innerHTML = d.dishes.map((x, i) => `
+        <label class="dish-pick"><input type="checkbox" data-dish="${i}"${x.keep ? ' checked' : ''}>
+          <span><b>${esc(x.titles[state.lang] || x.titles.zh || x.titles.en)}</b>
+          <small>${x.foods.map(id => (catalog.get(id) || {}).emoji || '').join(' ')} ${esc(x.slots.length ? P.SLOTS[x.slots[0]][state.lang] : '')}</small></span></label>`).join('');
+      $('draft-save').textContent = t('saveDishes')(d.dishes.filter(x => x.keep).length);
+    } else {
+      $('draft-save').textContent = t('savePhoto');
+    }
+    const shown = draftFoods();
+    const off = [...d.removed].filter(id => catalog.get(id));
+    $('draft-foods').innerHTML = shown.length || off.length
+      ? shown.map(id => { const f = catalog.get(id); return f ? `<button type="button" class="chip" aria-pressed="true" data-draft-food="${esc(id)}"><span aria-hidden="true">${f.emoji}</span>${esc(foodName(f))}</button>` : ''; }).join('')
+        + off.map(id => { const f = catalog.get(id); return `<button type="button" class="chip" aria-pressed="false" data-draft-food="${esc(id)}"><span aria-hidden="true">${f.emoji}</span>${esc(foodName(f))}</button>`; }).join('')
+      : `<span class="hint small">${esc(t('noFoodsFound'))}</span>`;
     $('draft-slots').innerHTML = ['breakfast', 'lunch', 'dinner', 'snack1'].map(s => `<label><input type="checkbox" data-draft-slot="${s}"${d.slots.includes(s) ? ' checked' : ''}> ${esc(s === 'snack1' ? (state.lang === 'zh' ? '加餐' : 'Snack') : P.SLOTS[s][state.lang])}</label>`).join('');
     $('draft-who').innerHTML = state.profiles.map(p => `<label><input type="checkbox" data-draft-who="${esc(p.id)}"${d.who.includes(p.id) ? ' checked' : ''}> ${esc(p.name)}</label>`).join('');
+  }
+
+  function startDraft(draft, title, notes) {
+    if (state.draft && state.draft.mode === 'new' && state.draft.preview) URL.revokeObjectURL(state.draft.preview);
+    state.draft = { added: new Set(), removed: new Set(), slots: [], who: [state.active], titles: null, steps: null, missing: [], dishes: null, busy: false, ...draft };
+    $('draft-title').value = title || '';
+    $('draft-notes').value = notes || '';
+    setStatus($('draft-status'), '');
+    renderDraft();
+    $('draft').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   function onDraftPhoto(e) {
     const file = e.target.files && e.target.files[0];
     e.target.value = '';
     if (!file) return;
-    if (state.draft && state.draft.preview) URL.revokeObjectURL(state.draft.preview);
-    state.draft = { file, preview: URL.createObjectURL(file), slots: [], who: [state.active] };
-    $('draft-title').value = '';
-    $('draft-notes').value = '';
+    startDraft({ mode: 'new', file, preview: URL.createObjectURL(file) });
+    if (state.apiKey) runDraftAI();
+    else $('draft-title').focus();
+  }
+
+  function editPhoto(id) {
+    const g = state.photos.local.find(x => x.id === id);
+    if (!g) return;
+    startDraft({ mode: 'edit', id, preview: g.src, added: new Set(g.foods), slots: g.slots.filter(s => s !== 'snack2'), who: g.who.slice(), titles: g.titles, steps: g.steps, missing: g.missing || [] },
+      photoTitle(g), g.steps && g.steps[state.lang] && g.steps[state.lang].length ? g.steps[state.lang].join('\n') : g.notes);
+  }
+
+  function applyDish(dish) {
+    const d = state.draft;
+    const title = dish.titles[state.lang] || dish.titles.zh || dish.titles.en;
+    const steps = dish.steps[state.lang] && dish.steps[state.lang].length ? dish.steps[state.lang] : dish.steps.zh.length ? dish.steps.zh : dish.steps.en;
+    $('draft-title').value = title;
+    $('draft-notes').value = steps.join('\n');
+    const detected = P.foodsInText(title + ' ' + steps.join(' '), state.custom);
+    d.added = new Set(dish.foods);
+    d.removed = new Set(detected.filter(id => !dish.foods.includes(id)));
+    d.titles = dish.titles;
+    d.steps = dish.steps;
+    d.missing = dish.missing;
+    if (dish.slots.length) d.slots = [dish.slots[0]];
+    const who = kidsForAges(dish.ages);
+    if (who.length) d.who = who;
+  }
+
+  async function runDraftAI() {
+    const d = state.draft;
+    if (!d || d.busy) return;
+    d.busy = true;
+    setStatus($('draft-status'), t('aiReading'));
     renderDraft();
-    $('draft-title').focus();
+    try {
+      const dishes = await window.TDM_VISION.analyzeDishes(d.file || d.preview, state.apiKey, FOODS, AGE_GROUPS);
+      if (state.draft !== d) return;
+      if (!dishes.length) setStatus($('draft-status'), t('aiNone'), 'err');
+      else if (dishes.length === 1) { applyDish(dishes[0]); setStatus($('draft-status'), t('aiDone'), 'ok'); }
+      else { d.dishes = dishes.map(x => ({ ...x, keep: true })); setStatus($('draft-status'), t('aiFound')(dishes.length), 'ok'); }
+    } catch (err) {
+      setStatus($('draft-status'), t(aiErrorKey(err)), 'err');
+      console.error(err);
+    }
+    d.busy = false;
+    renderDraft();
+  }
+
+  function metaFromDish(x, fallbackWho) {
+    const who = kidsForAges(x.ages);
+    const slots = x.slots.includes('snack1') ? ['snack1', 'snack2'] : x.slots;
+    return { title: x.titles.zh || x.titles.en, notes: '', titles: x.titles, steps: x.steps, missing: x.missing, foods: x.foods, slots, who: who.length ? who : fallbackWho };
   }
 
   async function saveDraft() {
     const d = state.draft;
-    const title = $('draft-title').value.trim();
-    if (!d || !title) { toast(t('needPhotoTitle')); return; }
-    const notes = $('draft-notes').value.trim();
-    const slots = d.slots.includes('snack1') ? d.slots.concat('snack2') : d.slots;
+    if (!d) return;
+    const G = window.TDM_GALLERY;
     try {
-      await window.TDM_GALLERY.addLocal(d.file, { title, notes, foods: P.foodsInText(title + ' ' + notes, state.custom), slots, who: d.who });
+      if (Array.isArray(d.dishes) && d.dishes.length > 1) {
+        const keep = d.dishes.filter(x => x.keep);
+        if (!keep.length) return;
+        const blob = d.file ? await G.compress(d.file) : await (await fetch(d.preview)).blob();
+        const metas = keep.map(x => metaFromDish(x, d.who));
+        if (d.mode === 'edit') await G.updateLocal(d.id, metas.shift());
+        for (const m of metas) await G.addLocal(null, m, blob);
+        toast(t('photoSavedN')(keep.length));
+      } else {
+        const title = $('draft-title').value.trim();
+        if (!title) { toast(t('needPhotoTitle')); return; }
+        const notes = $('draft-notes').value.trim();
+        // Keep the AI's bilingual name and steps only while they still match what is in the form.
+        const aiTitle = d.titles && (d.titles[state.lang] || d.titles.zh || d.titles.en) === title;
+        const aiSteps = d.steps && (d.steps[state.lang] || []).join('\n') === notes;
+        const slots = d.slots.includes('snack1') ? d.slots.concat('snack2') : d.slots;
+        const meta = { title, notes: aiSteps ? '' : notes, titles: aiTitle ? d.titles : null, steps: aiSteps ? d.steps : null, missing: d.missing || [], foods: draftFoods(), slots, who: d.who };
+        if (d.mode === 'edit') await G.updateLocal(d.id, meta);
+        else await G.addLocal(d.file, meta);
+        toast(t('photoSaved'));
+      }
     } catch (e) {
       toast(t('errImage'));
       return;
     }
-    URL.revokeObjectURL(d.preview);
+    if (d.mode === 'new') URL.revokeObjectURL(d.preview);
     state.draft = null;
-    toast(t('photoSaved'));
     await loadPhotos();
+  }
+
+  async function aiShared(baseId, btn) {
+    const g = rawShared.find(x => x.id === baseId);
+    if (!g) return;
+    btn.disabled = true;
+    btn.textContent = t('aiReading');
+    try {
+      const dishes = await window.TDM_VISION.analyzeDishes(g.src, state.apiKey, FOODS, AGE_GROUPS);
+      if (!dishes.length) { toast(t('aiNone')); btn.disabled = false; btn.textContent = t('aiShort'); return; }
+      const meta = sharedMeta();
+      meta[baseId] = dishes;
+      store.set('sharedMeta', meta);
+      state.photos.shared = enrichShared(rawShared);
+      toast(dishes.length > 1 ? t('aiFound')(dishes.length) : t('aiDone'));
+      renderIdeas();
+    } catch (err) {
+      toast(t(aiErrorKey(err)));
+      btn.disabled = false;
+      btn.textContent = t('aiShort');
+    }
+  }
+
+  function addDraftFood() {
+    const input = $('draft-add-food');
+    const res = P.parseFoodText(input.value, state.custom);
+    res.matched.forEach(id => { state.draft.added.add(id); state.draft.removed.delete(id); });
+    input.value = '';
+    renderDraft();
   }
 
   // ---------- nutrition tab ----------
@@ -1154,6 +1340,19 @@
     if (addm) { openAddToMenu(addm.dataset.addmenu); return; }
     const addDo = el.closest('[data-addmenu-do]');
     if (addDo) { doAddToMenu(addDo.dataset.addmenuDo); return; }
+    const edit = el.closest('[data-editphoto]');
+    if (edit) { editPhoto(edit.dataset.editphoto); return; }
+    const ais = el.closest('[data-aishared]');
+    if (ais) { aiShared(ais.dataset.aishared, ais); return; }
+    const df = el.closest('[data-draft-food]');
+    if (df && state.draft) {
+      const id = df.dataset.draftFood;
+      if (df.getAttribute('aria-pressed') === 'true') { state.draft.removed.add(id); state.draft.added.delete(id); } else { state.draft.removed.delete(id); state.draft.added.add(id); }
+      renderDraft();
+      return;
+    }
+    if (el.id === 'draft-ai') { runDraftAI(); return; }
+    if (el.id === 'draft-add-food-btn') { addDraftFood(); return; }
     const del = el.closest('[data-delphoto]');
     if (del) {
       if (!confirmTap(del, 'del:' + del.dataset.delphoto, t('confirmRemove'))) return;
@@ -1200,6 +1399,8 @@
       updateProfile({ exclude: [...set] });
       return;
     }
+    if (el.id === 'idea-rate') { state.ideaRate = +el.value; store.set('ideaRate', state.ideaRate); return; }
+    if (el.dataset.dish && state.draft && state.draft.dishes) { state.draft.dishes[+el.dataset.dish].keep = el.checked; renderDraft(); return; }
     if (el.dataset.draftSlot && state.draft) {
       const set = new Set(state.draft.slots);
       el.checked ? set.add(el.dataset.draftSlot) : set.delete(el.dataset.draftSlot);
@@ -1227,7 +1428,8 @@
   $('photo-review').addEventListener('click', onReviewClick);
   $('draft-input').addEventListener('change', onDraftPhoto);
   $('draft-save').addEventListener('click', () => { saveDraft(); });
-  $('draft-cancel').addEventListener('click', () => { if (state.draft) URL.revokeObjectURL(state.draft.preview); state.draft = null; renderDraft(); });
+  $('draft-cancel').addEventListener('click', () => { if (state.draft && state.draft.mode === 'new') URL.revokeObjectURL(state.draft.preview); state.draft = null; renderDraft(); });
+  $('draft-add-food').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addDraftFood(); } });
   $('starter-btn').addEventListener('click', () => { addFoods(STARTER_PANTRY); });
   $('clear-btn').addEventListener('click', () => { state.pantry.clear(); save(); renderPantry(); });
   $('make-btn').addEventListener('click', makePlan);

@@ -276,3 +276,52 @@ test('gallery file names become titles and tags', () => {
   assert.deepStrictEqual(parseName('番茄炒蛋 [晚餐 大宝].jpg'), { title: '番茄炒蛋', tags: ['晚餐', '大宝'] });
   assert.deepStrictEqual(parseName('pumpkin_congee【早餐，小宝】.png'), { title: 'pumpkin congee', tags: ['早餐', '小宝'] });
 });
+
+// ---------- menu-idea pictures read by AI ----------
+const V = require('../js/vision.js');
+
+test('AI dish readings are cleaned: known foods, meals and ages only', () => {
+  const dishes = V.normalizeDishes({ dishes: [
+    { title_zh: '番茄炒蛋', title_en: 'Tomato & egg', foods: ['tomato', 'egg', 'dragon-meat'], missing: [{ zh: '葱' }], meal: 'dinner', ages: ['y3', 'teen'], steps_zh: ['打蛋', ''], steps_en: ['Beat eggs'] },
+    { title_en: 'Fruit cup', foods: 'banana', meal: 'snack' },
+    { foods: ['egg'] },
+  ] }, D.FOODS.map(f => f.id), D.AGE_GROUPS.map(a => a.id));
+  assert.strictEqual(dishes.length, 2, 'a dish without a name is dropped');
+  assert.deepStrictEqual(dishes[0].foods, ['tomato', 'egg']);
+  assert.deepStrictEqual(dishes[0].slots, ['dinner', 'lunch']);
+  assert.deepStrictEqual(dishes[0].ages, ['y3']);
+  assert.deepStrictEqual(dishes[0].steps.zh, ['打蛋']);
+  assert.deepStrictEqual(dishes[0].missing, [{ en: '葱', zh: '葱' }]);
+  assert.deepStrictEqual(dishes[1].titles, { zh: 'Fruit cup', en: 'Fruit cup' });
+  assert.deepStrictEqual(dishes[1].foods, []);
+  assert.deepStrictEqual(dishes[1].slots, ['snack1', 'snack2']);
+  assert.deepStrictEqual(V.normalizeDishes(null, [], []), []);
+});
+
+test('idea dishes show their own name and steps in each language', () => {
+  const g = { id: 'local:1', title: '番茄牛肉烩饭', titles: { zh: '番茄牛肉烩饭', en: 'Tomato beef rice' }, steps: { zh: ['牛肉切碎', '番茄炒软'], en: ['Mince the beef', 'Soften the tomato'] }, foods: ['tomato', 'beef', 'rice'] };
+  const meal = P.galleryToMeal(g, 'dinner');
+  const en = P.describeMeal(meal, 'en', [], { age: 'm12', texture: 'mash' });
+  const zh = P.describeMeal(meal, 'zh', [], { age: 'y3', texture: 'family' });
+  assert.strictEqual(en.title, 'Tomato beef rice');
+  assert.strictEqual(zh.title, '番茄牛肉烩饭');
+  assert.ok(en.steps.includes('Mince the beef'));
+  assert.ok(en.steps.some(s => s.includes('Mash with a fork')), 'baby texture step is added to the idea');
+  assert.ok(zh.steps.some(s => s.includes('一小撮盐')), 'big kid seasoning note is added');
+  const noEn = P.describeMeal({ ...meal, titles: { zh: '番茄牛肉烩饭', en: '' }, steps: { zh: ['牛肉切碎'], en: [] } }, 'en', [], {});
+  assert.strictEqual(noEn.title, '番茄牛肉烩饭');
+  assert.ok(noEn.steps.includes('牛肉切碎'), 'falls back to the other language');
+});
+
+test('how often ideas are used can be turned off or up', () => {
+  const gallery = [{ id: 'g1', title: '牛肉粥', foods: ['beef', 'rice'], slots: ['lunch', 'dinner'], ages: [] },
+    { id: 'g2', title: '香蕉燕麦', foods: ['banana', 'oats'], slots: ['breakfast'], ages: [] }];
+  const count = rate => {
+    let n = 0;
+    for (let seed = 1; seed <= 20; seed++) n += P.planStats(P.generatePlan({ pantry: D.STARTER_PANTRY, days: 7, settings: {}, seed, gallery, galleryRate: rate })).ideas;
+    return n;
+  };
+  assert.strictEqual(count(0), 0);
+  assert.ok(count(0.6) >= count(0.3));
+  assert.ok(count(0.6) > 20);
+});

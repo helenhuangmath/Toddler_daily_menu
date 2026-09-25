@@ -12,7 +12,7 @@ A simple web app that makes **daily or weekly menus for young children** (1–5 
 - **Suggested amounts** for every ingredient in every dish (grams, raw or dry weight), plus a per-meal energy/protein/iron line.
 - **Nutrition table for each day** (food + milk) against the daily needs of a 1–3 year old, and a **Nutrition** tab with a portion guide, daily needs and a searchable per-100 g nutrition facts table for all foods.
 - **Picture menu**: switch the menu between text and pictures. Each dish shows your own photo when one matches, otherwise a drawn plate; pick a photo per dish from its dropdown.
-- **Dish photo library** (Ideas tab): save dish ideas with a photo on your phone, or put photos in the repo's `gallery/` folder so the whole family sees them. Photo dishes can be added to the menu and are mixed into new menus when their foods are at home.
+- **Menu ideas from pictures** (Ideas tab): save pictures of dishes or menus you like. With an Anthropic API key, AI reads each picture: dish name (中文 + English), ingredients, which meal and which child it suits, and low-salt steps; a picture of a whole menu becomes several dishes. Without a key, the ingredients are picked from the dish name you type. Each idea shows whether you can cook it with what's at home or what's still missing; add it to a menu with one tap, and choose how often new menus use your ideas (never / sometimes / often). Put pictures in the repo's `gallery/` folder so the whole family sees them.
 - **Share with family**: send a child's menu as a link; family members open it and save it on their phone.
 - Full **English / 中文** interface, including dish names and cooking steps.
 - **iPhone app**: install from Safari with “Add to Home Screen” (works offline), or build the included native Xcode project. See **[docs/IPHONE.md](docs/IPHONE.md)** (中文说明).
@@ -45,7 +45,7 @@ The live app is at https://helenhuangmath.github.io/Toddler_daily_menu/ and upda
    - tap **New combinations / 换一批搭配** to reshuffle everything,
    - each ingredient shows its suggested amount; open **Nutrition for the day / 当日营养成分** under each day,
    - **Share with family / 分享给家人** sends a link to the same menu, or copy/print the week to stick on the fridge.
-4. **Ideas / 灵感**: cooking methods suited to the child's stage, your dish photos (add one, tap **加入菜单** to put it in the menu), and the family gallery.
+4. **Ideas / 灵感**: your menu-idea pictures (add one, let AI read it or type the name, check the ingredients, save; tap **加入菜单** to put it in the menu), the family gallery (tap **✨ AI 识别** to read a family picture on this phone), and cooking methods suited to the child's stage.
 5. **Nutrition / 营养**: how much to serve, daily needs for ages 1–3, iron tips, and nutrition facts per 100 g for every food.
 6. **Settings / 设置**: per child: name, age, texture, meals to plan, milk a day (counted in the totals) and allergens to leave out. Add or remove children here. Also the API key for photo scanning.
 

@@ -173,6 +173,7 @@
       settings: opts.settings || {},
       gallery: (opts.gallery || []).filter(g => g && g.id && Array.isArray(g.foods) && g.foods.length),
       galleryUsed: new Set(),
+      galleryRate: typeof opts.galleryRate === 'number' ? opts.galleryRate : 0.3,
     };
   }
 
@@ -501,11 +502,10 @@
       && (g.slots && g.slots.length ? g.slots.some(s => mainSlot.includes(s) || (snackSlot && (s === 'snack1' || s === 'snack2'))) : !snackSlot)
       && (!g.ages || !g.ages.length || g.ages.includes(ctx.prof.age))
       && g.foods.every(id => ctx.ids.has(id)));
-    if (!cands.length || ctx.rand() > 0.3) return null;
+    if (!cands.length || ctx.rand() >= ctx.galleryRate) return null;
     const g = cands[Math.floor(ctx.rand() * cands.length)];
     ctx.galleryUsed.add(g.id);
-    return { slot, template: 'gallery', gallery: g.id, title: String(g.title || ''), notes: String(g.notes || ''), items: g.foods.slice(),
-      main: null, veg: null, veg2: null, protein: null, fruit: null, partner: null, extra: null, fat: null };
+    return galleryToMeal(g, slot);
   }
 
   function buildMeal(ctx, slot, day, noise, avoid) {
@@ -604,10 +604,13 @@
     return { ...plan, days };
   }
 
-  /** A meal made from one of the family's own dish photos, for "add to menu". */
+  /** A meal made from one of the family's own menu-idea pictures. titles/steps are optional { en, zh }. */
   function galleryToMeal(g, slot) {
-    return { slot, template: 'gallery', gallery: g.id, title: String(g.title || ''), notes: String(g.notes || ''), items: (g.foods || []).slice(),
+    const meal = { slot, template: 'gallery', gallery: g.id, title: String(g.title || ''), notes: String(g.notes || ''), items: (g.foods || []).slice(),
       main: null, veg: null, veg2: null, protein: null, fruit: null, partner: null, extra: null, fat: null };
+    if (g.titles && (g.titles.en || g.titles.zh)) meal.titles = { en: String(g.titles.en || ''), zh: String(g.titles.zh || '') };
+    if (g.steps && (Array.isArray(g.steps.en) || Array.isArray(g.steps.zh))) meal.steps = { en: (g.steps.en || []).map(String), zh: (g.steps.zh || []).map(String) };
+    return meal;
   }
 
   function pantryWarnings(ctx) {
@@ -629,10 +632,12 @@
     const cats = { carb: new Set(), veg: new Set(), fruit: new Set(), protein: new Set(), dairy: new Set(), fat: new Set() };
     let ironDays = 0;
     const methods = new Set();
+    let ideas = 0;
     for (const d of plan.days) {
       let iron = false;
       for (const m of d.meals) {
         methods.add(m.pmethod ? 'p:' + m.pmethod : m.template);
+        if (m.template === 'gallery') ideas++;
         for (const id of m.items) {
           ids.add(id);
           const f = catalog.get(id);
@@ -641,7 +646,7 @@
       }
       if (iron) ironDays++;
     }
-    return { distinct: ids.size, cats: Object.fromEntries(Object.entries(cats).map(([k, v]) => [k, v.size])), ironDays, days: plan.days.length, methods: methods.size };
+    return { distinct: ids.size, cats: Object.fromEntries(Object.entries(cats).map(([k, v]) => [k, v.size])), ironDays, days: plan.days.length, methods: methods.size, ideas };
   }
 
   /** Usage counts for the history penalty of the next plan. */
@@ -947,10 +952,14 @@
         break;
 
       // ----- the family's own dishes -----
-      case 'gallery':
-        title = meal.title || (zh ? '我的菜' : 'My dish');
-        if (meal.notes) method.push(...String(meal.notes).split(/\n+/).map(x => x.trim()).filter(Boolean));
+      case 'gallery': {
+        title = (meal.titles && (meal.titles[L] || meal.titles.zh || meal.titles.en)) || meal.title || (zh ? '我的菜' : 'My dish');
+        const byLang = meal.steps || {};
+        const own = [byLang[L], byLang.zh, byLang.en].find(x => Array.isArray(x) && x.length);
+        if (own) method.push(...own);
+        else if (meal.notes) method.push(...String(meal.notes).split(/\n+/).map(x => x.trim()).filter(Boolean));
         break;
+      }
       default:
         title = zh ? '（食材不足，请添加更多食材）' : '(Not enough foods — add more at home)';
     }
@@ -963,7 +972,7 @@
     }
 
     const steps = [];
-    const own = meal.template === 'gallery' && meal.notes;
+    const own = meal.template === 'gallery' && (meal.notes || (meal.steps && ((meal.steps.en || []).length || (meal.steps.zh || []).length)));
     const selfContained = ['pancake', 'steamcake', 'veg_pancake'].includes(meal.template);
     if (!prof.kid && !own && !selfContained) {
       for (const id of meal.items) {

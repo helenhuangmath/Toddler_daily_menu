@@ -4,7 +4,8 @@
  *  - "Family photos": image files in the repo's gallery/ folder, listed in gallery/index.json
  *    by scripts/build-gallery.js when the site is published, so every phone sees them.
  *
- * A gallery item: { id, title, notes, foods: [foodId], slots: [slot], who: [profileId], src, shared }.
+ * A gallery item: { id, title, notes, foods: [foodId], slots: [slot], who: [profileId], src, shared }
+ * plus, when read by AI: titles { en, zh }, steps { en: [], zh: [] }, missing [{ en, zh }].
  */
 (function (root) {
   const DB_NAME = 'tdm-gallery';
@@ -69,6 +70,7 @@
       const rows = await tx('readonly', store => reqValue(store.getAll()));
       return (rows || []).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).map(r => ({
         id: r.id, title: r.title || '', notes: r.notes || '', foods: r.foods || [], slots: r.slots || [], who: r.who || [],
+        titles: r.titles || null, steps: r.steps || null, missing: r.missing || [],
         src: blobUrl(r.id, r.blob), shared: false,
       }));
     } catch (e) {
@@ -82,10 +84,12 @@
     return urlCache.get(id);
   }
 
-  async function addLocal(file, meta) {
-    const blob = await compress(file);
+  /** Save a picture. Pass an already-compressed `blob` to save several dishes from one picture. */
+  async function addLocal(file, meta, blob) {
+    blob = blob || await compress(file);
     const id = 'local:' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-    const row = { id, blob, createdAt: Date.now(), title: meta.title || '', notes: meta.notes || '', foods: meta.foods || [], slots: meta.slots || [], who: meta.who || [] };
+    const row = { id, blob, createdAt: Date.now(), title: meta.title || '', notes: meta.notes || '', foods: meta.foods || [], slots: meta.slots || [], who: meta.who || [],
+      titles: meta.titles || null, steps: meta.steps || null, missing: meta.missing || [] };
     await tx('readwrite', store => reqValue(store.put(row)));
     return id;
   }
