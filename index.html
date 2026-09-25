@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Little Spoon Menu</title>
+<meta name="description" content="Daily and weekly soft-food menus for a 14-month-old, built from what you have at home. English and 中文.">
+<meta name="theme-color" content="#2E7D62">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="小勺辅食">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Nunito:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<!-- APP:START -->
+<header class="topbar">
+  <div class="brand">
+    <img class="brand-mark" src="icons/icon.svg" alt="" width="36" height="36">
+    <div>
+      <h1 class="brand-name" data-i18n="appName">Little Spoon Menu</h1>
+      <p class="brand-sub" data-i18n="appSub">Soft food for 14 months · no salt · no sugar</p>
+    </div>
+  </div>
+  <div class="lang" role="group" aria-label="Language / 语言">
+    <button type="button" id="lang-en" data-lang="en">EN</button>
+    <button type="button" id="lang-zh" data-lang="zh">中文</button>
+  </div>
+</header>
+
+<nav class="tabs" role="tablist">
+  <button type="button" role="tab" id="tab-home" data-tab="home" data-i18n="tabHome">At home</button>
+  <button type="button" role="tab" id="tab-menu" data-tab="menu" data-i18n="tabMenu">Menu</button>
+  <button type="button" role="tab" id="tab-nutrition" data-tab="nutrition" data-i18n="tabNutrition">Nutrition</button>
+  <button type="button" role="tab" id="tab-settings" data-tab="settings" data-i18n="tabSettings">Settings</button>
+</nav>
+
+<main class="wrap">
+  <!-- ============ AT HOME ============ -->
+  <section id="panel-home" class="panel" role="tabpanel">
+    <div id="install-tip" class="install-tip" hidden>
+      <p><b data-i18n="installTitle">Install on your iPhone</b> <span data-i18n="installBody">In Safari, tap the Share button, then “Add to Home Screen”. The app then opens full-screen and works offline.</span></p>
+      <button type="button" class="btn btn-small btn-ghost" id="install-close" data-i18n="gotIt">Got it</button>
+    </div>
+    <div class="add-grid">
+      <div class="block">
+        <h2 data-i18n="photoTitle">Scan a photo</h2>
+        <p class="hint" data-i18n="photoHint">Snap your fridge, pantry or groceries and we'll pick out the foods.</p>
+        <label class="btn btn-ghost file-btn" for="photo-input">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+          <span data-i18n="photoBtn">Take or choose a photo</span>
+        </label>
+        <input id="photo-input" type="file" accept="image/*" hidden>
+        <div id="photo-status" class="status" hidden></div>
+        <div id="photo-review" class="review" hidden></div>
+      </div>
+
+      <form class="block" id="text-form">
+        <h2 data-i18n="typeTitle">Type what you have</h2>
+        <p class="hint" data-i18n="typeHint">Separate with commas. English or Chinese both work.</p>
+        <div class="row">
+          <input id="food-text" type="text" autocomplete="off" data-i18n-ph="typePh" placeholder="e.g. carrot, egg, 南瓜, 豆腐">
+          <button class="btn" type="submit" id="food-add" data-i18n="add">Add</button>
+        </div>
+        <div id="text-feedback" class="status" hidden></div>
+        <div id="unknown-box" class="unknown" hidden></div>
+      </form>
+    </div>
+
+    <div class="pantry-head">
+      <h2><span data-i18n="pantryTitle">Foods at home</span> <span id="pantry-count" class="count"></span></h2>
+      <div class="row tight">
+        <button type="button" class="btn btn-small btn-ghost" id="starter-btn" data-i18n="starter">Fill a typical kitchen</button>
+        <button type="button" class="btn btn-small btn-ghost" id="clear-btn" data-i18n="clear">Clear</button>
+      </div>
+    </div>
+    <p class="hint" data-i18n="pantryHint">Tap to mark what you have. Highlighted foods go into the menu.</p>
+    <div id="pantry"></div>
+  </section>
+
+  <!-- ============ MENU ============ -->
+  <section id="panel-menu" class="panel" role="tabpanel" hidden>
+    <div id="menu-empty" class="empty" hidden>
+      <p data-i18n="menuEmpty">No menu yet. Pick the foods you have, then tap “Make menu”.</p>
+      <button type="button" class="btn" id="goto-home" data-i18n="gotoHome">Choose foods</button>
+    </div>
+    <div id="shared-banner" class="shared-banner" hidden>
+      <p data-i18n="sharedBody">A family member shared this menu with you.</p>
+      <div class="row tight">
+        <button type="button" class="btn btn-small" id="shared-save" data-i18n="sharedSave">Save to this phone</button>
+        <button type="button" class="btn btn-small btn-ghost" id="shared-dismiss" data-i18n="sharedDismiss">Not now</button>
+      </div>
+    </div>
+    <div id="menu-body" hidden>
+      <div class="summary" id="summary"></div>
+      <div id="warnings"></div>
+      <div class="menu-actions row tight">
+        <button type="button" class="btn btn-small" id="reshuffle-btn" data-i18n="reshuffle">New combinations</button>
+        <button type="button" class="btn btn-small btn-ghost" id="share-btn" data-i18n="share">Share with family</button>
+        <button type="button" class="btn btn-small btn-ghost" id="copy-btn" data-i18n="copy">Copy as text</button>
+        <button type="button" class="btn btn-small btn-ghost" id="print-btn" data-i18n="print">Print</button>
+      </div>
+      <nav id="day-nav" class="day-nav" aria-label="Days"></nav>
+      <div id="days"></div>
+      <aside class="milk-note" data-i18n="milkNote">Alongside meals: about 350–500 ml of breast milk, whole milk or formula a day, and sips of water from an open cup.</aside>
+      <textarea id="copy-fallback" class="copy-fallback" readonly hidden></textarea>
+    </div>
+  </section>
+
+  <!-- ============ NUTRITION ============ -->
+  <section id="panel-nutrition" class="panel" role="tabpanel" hidden>
+    <div class="block">
+      <h2 data-i18n="portionTitle">How much to serve</h2>
+      <p class="hint" data-i18n="portionHint">Typical amounts for one meal at 12–24 months. Weights are raw, or dry for grains, before cooking. Let your child's hunger lead: some days they eat more, some days less.</p>
+      <div class="table-wrap"><table class="grid" id="portion-table"></table></div>
+      <ul class="tips" id="portion-tips"></ul>
+    </div>
+    <div class="block">
+      <h2 data-i18n="needsTitle">Daily needs, ages 1–3</h2>
+      <div class="table-wrap"><table class="grid" id="needs-table"></table></div>
+      <ul class="tips" id="iron-tips"></ul>
+    </div>
+    <div class="block">
+      <h2 data-i18n="factsTitle">Nutrition facts per 100 g</h2>
+      <p class="hint" data-i18n="factsHint">Approximate values for raw (or dry) food, from USDA FoodData Central and the China Food Composition Tables.</p>
+      <div class="row tight">
+        <input id="facts-search" type="search" autocomplete="off" data-i18n-ph="factsSearch" placeholder="Search foods">
+        <label class="sort"><span data-i18n="sortBy">Sort by</span>
+          <select id="facts-sort"></select>
+        </label>
+      </div>
+      <div class="table-wrap facts-wrap"><table class="grid facts" id="facts-table"></table></div>
+    </div>
+  </section>
+
+  <!-- ============ SETTINGS ============ -->
+  <section id="panel-settings" class="panel" role="tabpanel" hidden>
+    <div class="block">
+      <h2 data-i18n="textureTitle">Texture</h2>
+      <div class="choice">
+        <label><input type="radio" name="texture" id="tex-puree" value="puree"> <span><b data-i18n="texPuree">Smooth puree</b><small data-i18n="texPureeHint">Blended completely smooth. Safest while learning.</small></span></label>
+        <label><input type="radio" name="texture" id="tex-mash" value="mash"> <span><b data-i18n="texMash">Soft mash</b><small data-i18n="texMashHint">Fork-mashed with tiny soft lumps, to practise gum-chewing.</small></span></label>
+      </div>
+    </div>
+    <div class="block">
+      <h2 data-i18n="mealsTitle">Meals per day</h2>
+      <label class="switch"><input type="checkbox" id="snacks-toggle"> <span data-i18n="snacksLabel">Include 2 snacks (5 feeds a day)</span></label>
+    </div>
+    <div class="block">
+      <h2 data-i18n="milkTitle">Milk each day</h2>
+      <p class="hint" data-i18n="milkHint">Counted in the daily nutrition totals.</p>
+      <div class="row tight">
+        <select id="milk-type"></select>
+        <select id="milk-ml">
+          <option value="0">0 ml</option><option value="200">200 ml</option><option value="300">300 ml</option>
+          <option value="400">400 ml</option><option value="500">500 ml</option><option value="600">600 ml</option>
+        </select>
+      </div>
+    </div>
+    <div class="block">
+      <h2 data-i18n="allergyTitle">Leave out (allergies)</h2>
+      <p class="hint" data-i18n="allergyHint">Foods with these allergens will never be suggested.</p>
+      <div id="allergens" class="checks"></div>
+    </div>
+    <div class="block">
+      <h2 data-i18n="keyTitle">Photo scanning</h2>
+      <p class="hint" data-i18n="keyHint">Photo scanning uses Claude and needs an Anthropic API key. The key is stored only in this browser and sent only to Anthropic. Everything else works without it.</p>
+      <div class="row">
+        <input id="api-key" type="password" autocomplete="off" placeholder="sk-ant-…">
+        <button type="button" class="btn" id="key-save" data-i18n="save">Save</button>
+      </div>
+      <div id="key-status" class="status" hidden></div>
+      <p class="hint small"><a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener" data-i18n="keyLink">Get an API key</a></p>
+    </div>
+    <div class="block safety">
+      <h2 data-i18n="safetyTitle">Safety rules this app follows</h2>
+      <ul id="safety-list"></ul>
+      <p class="hint small" data-i18n="disclaimer">General guidance only. Check with your paediatrician, especially about allergies.</p>
+    </div>
+  </section>
+</main>
+
+<div class="actionbar" id="actionbar">
+  <div class="seg" role="group">
+    <button type="button" id="mode-day" data-mode="day" data-i18n="modeDay">Today</button>
+    <button type="button" id="mode-week" data-mode="week" data-i18n="modeWeek">This week</button>
+  </div>
+  <button type="button" class="btn btn-big" id="make-btn" data-i18n="make">Make menu</button>
+</div>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+<!-- APP:END -->
+
+<script src="js/data.js"></script>
+<script src="js/planner.js"></script>
+<script src="js/vision.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFB547"/>
+      <stop offset="1" stop-color="#F08A24"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <!-- steam: warm food -->
+  <g fill="none" stroke="#FFFFFF" stroke-width="34" stroke-linecap="round" opacity=".9">
+    <path d="M392 330c-36-44 36-74 0-128"/>
+    <path d="M512 300c-36-44 36-74 0-128"/>
+  </g>
+  <!-- spoon handle (behind bowl rim) -->
+  <path d="M600 520 L812 236" stroke="#2E7D62" stroke-width="62" stroke-linecap="round"/>
+  <!-- puree mound -->
+  <path d="M232 540c40-96 150-128 280-128s240 32 280 128z" fill="#7CC36B"/>
+  <path d="M330 470c40-30 100-40 150-36" fill="none" stroke="#A9DB8F" stroke-width="26" stroke-linecap="round"/>
+  <!-- spoon bowl resting in the puree -->
+  <ellipse cx="590" cy="500" rx="74" ry="46" fill="#2E7D62" transform="rotate(-38 590 500)"/>
+  <!-- bowl -->
+  <path d="M190 536h644c0 170-144 300-322 300S190 706 190 536z" fill="#FFFFFF"/>
+  <rect x="172" y="516" width="680" height="48" rx="24" fill="#FFFFFF"/>
+  <rect x="412" y="820" width="200" height="44" rx="22" fill="#FFFFFF"/>
+  <!-- bowl stripe -->
+  <path d="M236 640h552" stroke="#F4A23A" stroke-width="30" stroke-linecap="round"/>
+</svg>
