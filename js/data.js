@@ -4,7 +4,8 @@
  * super-soft / puree texture. No salt, sugar or honey is ever added.
  *
  * cat:       carb | veg | fruit | protein | dairy | fat
- * form:      (carb only) porridge | noodle | pasta | mash — decides the dish template
+ * form:      (carb only) porridge | noodle | pasta | mash | bread | flour — decides the dish template
+ * minStage:  lowest texture stage (see TEXTURES) the food suits, e.g. toast needs soft bites
  * allergen:  egg | dairy | fish | shellfish | wheat | soy | peanut | treenut | sesame
  * iron:      true for iron-rich foods (important at this age)
  * maxPerWeek: optional cap (e.g. liver)
@@ -37,6 +38,12 @@
       prep: { en: 'Boil tiny pasta (orzo/pastina) 2–3 min longer than the packet says.', zh: '小颗粒意面比包装建议多煮2–3分钟，煮至软烂。' } },
     { id: 'couscous', portion: 20, n: [376, 12.8, 0.6, 77.4, 5, 1.1, 24, 0, 0], cat: 'carb', form: 'porridge', emoji: '🌾', en: 'Couscous', zh: '古斯米', allergen: 'wheat', aliases: ['cous cous'],
       prep: { en: 'Pour 2× boiling water over couscous, cover 10 min, then fluff and mash.', zh: '古斯米加2倍开水焖10分钟，拌松后压软。' } },
+    { id: 'flour', portion: 20, n: [364, 10.3, 1, 76, 2.7, 1.2, 15, 0, 0], short: { en: 'flour', zh: '面粉' }, cat: 'carb', form: 'flour', emoji: '🥟', en: 'Flour / dumpling wrappers', zh: '面粉 / 饺子皮', allergen: 'wheat', aliases: ['flour', 'wheat flour', 'dumpling wrappers', 'wonton wrappers', '面粉', '饺子皮', '馄饨皮', '面皮'],
+      prep: { en: 'Used for soft pancakes, wontons and dumplings.', zh: '用来做软饼、小馄饨和饺子。' } },
+    { id: 'mantou', short: { en: 'steamed bun', zh: '馒头' }, portion: 30, n: [223, 7, 1.1, 47, 1.3, 1.8, 38, 0, 0], cat: 'carb', form: 'bread', minStage: 1, emoji: '🫓', en: 'Steamed bun (mantou)', zh: '馒头', allergen: 'wheat', aliases: ['mantou', 'steamed bun', 'steamed buns', '花卷', '小馒头'],
+      prep: { en: 'Choose plain buns and steam until soft. For babies, tear into tiny pieces or soak in soup.', zh: '选原味馒头蒸软。给小宝撕成小块或泡在汤里。' } },
+    { id: 'bread', short: { en: 'toast', zh: '面包' }, portion: 30, n: [252, 12.4, 3.5, 43, 6, 2.5, 107, 0, 0], cat: 'carb', form: 'bread', minStage: 3, emoji: '🍞', en: 'Whole-wheat bread', zh: '全麦面包', allergen: 'wheat', aliases: ['bread', 'toast', 'whole wheat bread', 'wholemeal bread', '吐司', '面包'],
+      prep: { en: 'Pick a low-salt, no-sugar loaf. Toast lightly and cut into strips.', zh: '选低盐无糖的面包，稍微烤一下切成条。' } },
     { id: 'potato', portion: 60, n: [77, 2, 0.1, 17.5, 2.2, 0.8, 12, 0, 19.7], cat: 'carb', form: 'mash', emoji: '🥔', en: 'Potato', zh: '土豆', aliases: ['potatoes', '马铃薯', '洋芋'],
       prep: { en: 'Peel, cube and steam 20 min until a fork slides in easily.', zh: '去皮切块，蒸20分钟至筷子轻松插透。' } },
     { id: 'sweetpotato', portion: 60, n: [86, 1.6, 0.1, 20.1, 3, 0.6, 30, 709, 2.4], cat: 'carb', form: 'mash', emoji: '🍠', en: 'Sweet potato', zh: '红薯', iron: false, aliases: ['sweet potatoes', 'yam (orange)', '地瓜', '番薯', '紫薯'],
@@ -175,7 +182,7 @@
   // A reasonable "typical kitchen" set so the app can be tried in one tap.
   const STARTER_PANTRY = ['rice', 'oats', 'noodles', 'sweetpotato', 'potato', 'carrot', 'pumpkin', 'broccoli',
     'spinach', 'tomato', 'zucchini', 'banana', 'apple', 'pear', 'blueberry', 'egg', 'chicken', 'beef', 'cod',
-    'tofu', 'yogurt', 'avocado', 'oliveoil'];
+    'tofu', 'yogurt', 'avocado', 'oliveoil', 'flour'];
 
   // Foods that are never suggested and trigger a warning if typed in.
   const BLOCKED = [
@@ -208,7 +215,55 @@
     { id: 'formula', en: 'Formula', zh: '配方奶', n: [66, 1.4, 3.5, 7.3, 0, 1.0, 60, 60, 9] },
   ];
 
-  const api = { CATEGORIES, FOODS, ALLERGENS, STARTER_PANTRY, BLOCKED, NUTRIENTS, MILKS };
+  // Age groups. `needs` follows NUTRIENTS order (null = no single target); 1–3 year DRIs apply until the
+  // 4th birthday, 4–8 year DRIs after. `scale` multiplies the 12–24 month portions.
+  const AGE_GROUPS = [
+    { id: 'm12', en: '12–24 months', zh: '1–2岁', scale: 1, texture: 'mash', meals: ['breakfast', 'snack1', 'lunch', 'snack2', 'dinner'], milkMl: 400,
+      needs: [800, 13, null, null, null, 7, 700, 300, 15] },
+    { id: 'y2', en: '2–3 years', zh: '2–3岁', scale: 1.3, texture: 'bites', meals: ['breakfast', 'snack1', 'lunch', 'snack2', 'dinner'], milkMl: 400,
+      needs: [1000, 13, null, null, null, 7, 700, 300, 15] },
+    { id: 'y3', en: '3–4 years', zh: '3–4岁', scale: 1.5, texture: 'family', meals: ['breakfast', 'dinner'], milkMl: 350,
+      needs: [1150, 13, null, null, null, 7, 700, 300, 15] },
+    { id: 'y4', en: '4–5 years', zh: '4–5岁', scale: 1.7, texture: 'family', meals: ['breakfast', 'dinner'], milkMl: 350,
+      needs: [1300, 19, null, null, null, 10, 1000, 400, 25] },
+  ];
+
+  // Texture stages, from smoothest to family food. Stage decides which cooking methods are offered.
+  const TEXTURES = [
+    { id: 'puree', stage: 0, en: 'Smooth puree', zh: '细腻泥糊', hint: { en: 'Blended completely smooth.', zh: '完全打成顺滑的泥。' } },
+    { id: 'mash', stage: 1, en: 'Soft mash', zh: '软烂压泥', hint: { en: 'Fork-mashed with tiny soft lumps, to practise gum-chewing.', zh: '用叉子压成带小软粒的泥，练习用牙床咀嚼。' } },
+    { id: 'minced', stage: 2, en: 'Finely chopped', zh: '碎末软食', hint: { en: 'Soft food chopped into 2–3 mm bits, soft rice and small meatballs.', zh: '切成2–3毫米的碎末，软饭、小肉丸。' } },
+    { id: 'bites', stage: 3, en: 'Soft bites & finger food', zh: '软块手指食物', hint: { en: 'Soft pieces that squash between two fingers, for self-feeding.', zh: '两根手指一捏就烂的软块，让孩子自己抓着吃。' } },
+    { id: 'family', stage: 4, en: 'Family food, cut small', zh: '家常饭菜（切小块）', hint: { en: 'Everyday dishes with little salt, cut into bite-sized pieces.', zh: '少盐的家常菜，切成一口大小。' } },
+  ];
+
+  // Cooking methods beyond boiling and mixed purees, shown on the Ideas tab. minStage = earliest texture stage.
+  const COOKING_IDEAS = [
+    { id: 'steam', minStage: 0, emoji: '♨️', en: 'Steam instead of boil', zh: '蒸代替煮',
+      body: { en: 'Steaming keeps more vitamin C and colour than boiling. Steam veg over the rice pot to save time.', zh: '蒸比水煮保留更多维生素C和颜色。可以在煮饭的锅上架蒸屉，一起蒸。' } },
+    { id: 'separate', minStage: 0, emoji: '🍱', en: 'Serve foods separately', zh: '分开装，不全混在一起',
+      body: { en: 'Put 2–3 purees side by side instead of one mixed puree, so your child learns each taste and colour.', zh: '把2–3种泥分开放在盘里，不全部混合，孩子能认识每种食物的味道和颜色。' } },
+    { id: 'roast', minStage: 1, emoji: '🔥', en: 'Oven-roast', zh: '烤箱烤',
+      body: { en: 'Roast sweet potato, pumpkin or carrot at 200°C for 25–35 min with a little oil. Sweeter and nuttier; mash or cut into soft sticks.', zh: '红薯、南瓜、胡萝卜刷少许油，200°C烤25–35分钟。味道更香甜，可以压泥或切软条。' } },
+    { id: 'braise', minStage: 0, emoji: '🍲', en: 'Slow braise or stew', zh: '慢炖',
+      body: { en: 'Simmer beef, pork or lamb with tomato and root veg for 1–1.5 hours until it falls apart. Much softer than boiled meat.', zh: '牛肉、猪肉或羊肉加番茄和根茎类蔬菜小火炖1–1.5小时，炖到一碰就散，比白煮的肉嫩很多。' } },
+    { id: 'custard', minStage: 0, emoji: '🥚', en: 'Steamed egg custard', zh: '蒸蛋羹',
+      body: { en: 'Egg + 1.5× warm water + finely chopped veg or fish, steamed 10–12 min. Silky enough for no teeth.', zh: '鸡蛋加1.5倍温水，拌入菜末或鱼泥，蒸10–12分钟，嫩滑不用牙。' } },
+    { id: 'meatball', minStage: 1, emoji: '🧆', en: 'Steamed meatballs and fish balls', zh: '蒸肉丸、鱼丸',
+      body: { en: 'Blend meat or fish with veg and a spoon of starch or oats, roll small balls and steam 12–15 min. Soft enough to squash.', zh: '肉或鱼加蔬菜和一勺淀粉或燕麦打成泥，搓小丸子蒸12–15分钟，软到一压就烂。' } },
+    { id: 'pancake', minStage: 1, emoji: '🥞', en: 'Soft veggie pancakes', zh: '蔬菜软饼',
+      body: { en: 'Egg + flour or oats + grated veg, cooked on low heat in a non-stick pan. Tear into pieces for baby, whole for big kids.', zh: '鸡蛋加面粉或燕麦粉，再加擦丝的蔬菜，不粘锅小火煎熟。给小宝撕小块，大宝整块吃。' } },
+    { id: 'steamcake', minStage: 1, emoji: '🧁', en: 'No-sugar steamed cakes', zh: '无糖蒸糕',
+      body: { en: 'Oat flour + mashed banana or apple + egg, steamed 20 min. Sweetened only by fruit.', zh: '燕麦粉加香蕉泥或苹果泥和鸡蛋，蒸20分钟，只用水果的甜味。' } },
+    { id: 'softrice', minStage: 2, emoji: '🍚', en: 'Soft rice and risotto', zh: '软饭、烩饭',
+      body: { en: 'Cook rice with 3–4× water so it is soft but not soupy, then stir in chopped veg and meat. The step between congee and normal rice.', zh: '米加3–4倍水煮成软饭（比粥稠），拌入菜末和肉末。是从粥到普通米饭的过渡。' } },
+    { id: 'wonton', minStage: 2, emoji: '🥟', en: 'Tiny wontons', zh: '小馄饨',
+      body: { en: 'Wrap a little minced meat and veg in thin wrappers and boil 5 min. Cut in half for little ones.', zh: '用薄馄饨皮包少许肉末和菜末，煮5分钟。给小宝剪成两半。' } },
+    { id: 'finger', minStage: 3, emoji: '✋', en: 'Finger foods', zh: '手指食物',
+      body: { en: 'Steamed carrot or broccoli sticks, tofu cubes, omelette strips and banana spears. Soft enough to squash between two fingers.', zh: '蒸熟的胡萝卜条、西兰花、豆腐块、鸡蛋饼条、香蕉条，软到两根手指能捏烂。' } },
+  ];
+
+  const api = { CATEGORIES, FOODS, ALLERGENS, STARTER_PANTRY, BLOCKED, NUTRIENTS, MILKS, AGE_GROUPS, TEXTURES, COOKING_IDEAS };
   root.TDM_DATA = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);
