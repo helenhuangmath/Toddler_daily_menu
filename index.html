@@ -35,13 +35,15 @@
 </header>
 
 <nav class="tabs" role="tablist">
-  <button type="button" role="tab" id="tab-home" data-tab="home" data-i18n="tabHome">At home</button>
+  <button type="button" role="tab" id="tab-home" data-tab="home" data-i18n="tabHome">Foods</button>
   <button type="button" role="tab" id="tab-menu" data-tab="menu" data-i18n="tabMenu">Menu</button>
+  <button type="button" role="tab" id="tab-ideas" data-tab="ideas" data-i18n="tabIdeas">Ideas</button>
   <button type="button" role="tab" id="tab-nutrition" data-tab="nutrition" data-i18n="tabNutrition">Nutrition</button>
   <button type="button" role="tab" id="tab-settings" data-tab="settings" data-i18n="tabSettings">Settings</button>
 </nav>
 
 <main class="wrap">
+  <div class="kid-bar" id="kid-bar" role="group"></div>
   <!-- ============ AT HOME ============ -->
   <section id="panel-home" class="panel" role="tabpanel">
     <div id="install-tip" class="install-tip" hidden>
@@ -97,6 +99,12 @@
         <button type="button" class="btn btn-small btn-ghost" id="shared-dismiss" data-i18n="sharedDismiss">Not now</button>
       </div>
     </div>
+    <div class="menu-head">
+      <h2 id="menu-heading">Menu</h2>
+      <label class="view-pick"><span data-i18n="viewLabel">View</span>
+        <select id="view-select"></select>
+      </label>
+    </div>
     <div id="menu-body" hidden>
       <div class="summary" id="summary"></div>
       <div id="warnings"></div>
@@ -113,16 +121,56 @@
     </div>
   </section>
 
+  <!-- ============ IDEAS ============ -->
+  <section id="panel-ideas" class="panel" role="tabpanel" hidden>
+    <div class="block">
+      <h2 id="ideas-title">Cooking ideas</h2>
+      <p class="hint" data-i18n="ideasHint">Ways to cook beyond boiling and mixed purees.</p>
+      <ul class="ideas" id="ideas-list"></ul>
+    </div>
+    <div class="block">
+      <h2 data-i18n="myPhotosTitle">My dish photos</h2>
+      <p class="hint" data-i18n="myPhotosHint">Saved on this phone only.</p>
+      <label class="btn btn-ghost file-btn" for="draft-input">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+        <span data-i18n="uploadBtn">Add a dish photo</span>
+      </label>
+      <input id="draft-input" type="file" accept="image/*" hidden>
+      <div id="draft" class="draft" hidden>
+        <img id="draft-img" alt="">
+        <div class="draft-fields">
+          <div class="field"><label for="draft-title" data-i18n="dishName">Dish name</label><input id="draft-title" type="text" maxlength="60" data-i18n-ph="dishNamePh" placeholder="e.g. pumpkin chicken congee"></div>
+          <p class="hint small" id="draft-foods"></p>
+          <div class="field"><label for="draft-notes" data-i18n="dishNotes">How to make</label><textarea id="draft-notes" rows="3"></textarea></div>
+          <div class="field"><span class="field-label" data-i18n="forMeals">Meal</span><div class="checks" id="draft-slots"></div></div>
+          <div class="field"><span class="field-label" data-i18n="forWho">For</span><div class="checks" id="draft-who"></div></div>
+          <div class="row tight">
+            <button type="button" class="btn btn-small" id="draft-save" data-i18n="savePhoto">Save photo</button>
+            <button type="button" class="btn btn-small btn-ghost" id="draft-cancel" data-i18n="cancel">Cancel</button>
+          </div>
+        </div>
+      </div>
+      <div id="my-photos"></div>
+    </div>
+    <div class="block">
+      <h2 data-i18n="sharedTitle">Family gallery</h2>
+      <p class="hint" data-i18n="sharedHint">Photos in the gallery folder on GitHub.</p>
+      <p class="small"><a id="shared-how" href="https://github.com/helenhuangmath/Toddler_daily_menu/tree/main/gallery" target="_blank" rel="noopener" data-i18n="sharedHow">How to add family photos</a></p>
+      <div id="family-photos"></div>
+    </div>
+  </section>
+
   <!-- ============ NUTRITION ============ -->
   <section id="panel-nutrition" class="panel" role="tabpanel" hidden>
     <div class="block">
       <h2 data-i18n="portionTitle">How much to serve</h2>
       <p class="hint" data-i18n="portionHint">Typical amounts for one meal at 12–24 months. Weights are raw, or dry for grains, before cooking. Let your child's hunger lead: some days they eat more, some days less.</p>
+      <p class="hint small" id="portion-scale" hidden></p>
       <div class="table-wrap"><table class="grid" id="portion-table"></table></div>
       <ul class="tips" id="portion-tips"></ul>
     </div>
     <div class="block">
-      <h2 data-i18n="needsTitle">Daily needs, ages 1–3</h2>
+      <h2 id="needs-title">Daily needs</h2>
       <div class="table-wrap"><table class="grid" id="needs-table"></table></div>
       <ul class="tips" id="iron-tips"></ul>
     </div>
@@ -142,31 +190,8 @@
   <!-- ============ SETTINGS ============ -->
   <section id="panel-settings" class="panel" role="tabpanel" hidden>
     <div class="block">
-      <h2 data-i18n="textureTitle">Texture</h2>
-      <div class="choice">
-        <label><input type="radio" name="texture" id="tex-puree" value="puree"> <span><b data-i18n="texPuree">Smooth puree</b><small data-i18n="texPureeHint">Blended completely smooth. Safest while learning.</small></span></label>
-        <label><input type="radio" name="texture" id="tex-mash" value="mash"> <span><b data-i18n="texMash">Soft mash</b><small data-i18n="texMashHint">Fork-mashed with tiny soft lumps, to practise gum-chewing.</small></span></label>
-      </div>
-    </div>
-    <div class="block">
-      <h2 data-i18n="mealsTitle">Meals per day</h2>
-      <label class="switch"><input type="checkbox" id="snacks-toggle"> <span data-i18n="snacksLabel">Include 2 snacks (5 feeds a day)</span></label>
-    </div>
-    <div class="block">
-      <h2 data-i18n="milkTitle">Milk each day</h2>
-      <p class="hint" data-i18n="milkHint">Counted in the daily nutrition totals.</p>
-      <div class="row tight">
-        <select id="milk-type"></select>
-        <select id="milk-ml">
-          <option value="0">0 ml</option><option value="200">200 ml</option><option value="300">300 ml</option>
-          <option value="400">400 ml</option><option value="500">500 ml</option><option value="600">600 ml</option>
-        </select>
-      </div>
-    </div>
-    <div class="block">
-      <h2 data-i18n="allergyTitle">Leave out (allergies)</h2>
-      <p class="hint" data-i18n="allergyHint">Foods with these allergens will never be suggested.</p>
-      <div id="allergens" class="checks"></div>
+      <h2 data-i18n="kidTitle">Children</h2>
+      <div id="profile-editor" class="profile-editor"></div>
     </div>
     <div class="block">
       <h2 data-i18n="keyTitle">Photo scanning</h2>
@@ -196,9 +221,11 @@
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 <!-- APP:END -->
 
+<script src="js/config.js"></script>
 <script src="js/data.js"></script>
 <script src="js/planner.js"></script>
 <script src="js/vision.js"></script>
+<script src="js/gallery.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

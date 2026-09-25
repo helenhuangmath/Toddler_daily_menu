@@ -157,3 +157,122 @@ test('custom foods without data are reported, not guessed', () => {
   assert.deepStrictEqual(r.uncounted, ['custom:pineapple']);
   assert.ok(r.grams['custom:pineapple'] > 0);
 });
+
+// ---------- ages, textures, cooking methods, family photos ----------
+const BIG_PANTRY = D.STARTER_PANTRY.concat(['mantou', 'bread', 'milk', 'shrimp', 'salmon', 'pork', 'napacabbage', 'cauliflower', 'ricotta', 'millet', 'pasta', 'lentils']);
+const STAGE_METHODS = { meatball: 1, veg_pancake: 1, roast: 1, pancake: 1, steamcake: 1, oat_yogurt: 1, softrice: 2, wonton: 2, finger: 3 };
+
+test('3-year-old gets family-style breakfast and dinner only', () => {
+  const plan = P.generatePlan({ pantry: BIG_PANTRY, days: 7, settings: { age: 'y3', texture: 'family', meals: ['breakfast', 'dinner'] }, seed: 3 });
+  for (const d of plan.days) {
+    assert.deepStrictEqual(d.meals.map(m => m.slot), ['breakfast', 'dinner']);
+    for (const m of d.meals) {
+      assert.ok(m.template.startsWith('k_') || m.template === 'gallery', m.template);
+      for (const id of m.items) assert.ok(BIG_PANTRY.includes(id), id);
+    }
+  }
+  const keys = plan.days.flatMap(d => d.meals.map(P.comboKey));
+  assert.strictEqual(new Set(keys).size, keys.length);
+});
+
+test('age defaults: 3–4 years plans breakfast and dinner with family food', () => {
+  const prof = P.profileOf({ age: 'y3' });
+  assert.deepStrictEqual(prof.slots, ['breakfast', 'dinner']);
+  assert.strictEqual(prof.kid, true);
+  assert.strictEqual(P.profileOf({}).stage, 1);
+});
+
+test('cooking methods respect the texture stage', () => {
+  for (const texture of ['puree', 'mash', 'minced', 'bites']) {
+    const stage = D.TEXTURES.find(x => x.id === texture).stage;
+    for (const seed of [1, 2, 3]) {
+      const plan = P.generatePlan({ pantry: BIG_PANTRY, days: 7, settings: { age: 'm12', texture }, seed });
+      for (const m of plan.days.flatMap(d => d.meals)) {
+        if (STAGE_METHODS[m.template] !== undefined) assert.ok(STAGE_METHODS[m.template] <= stage, `${m.template} at ${texture}`);
+        for (const id of m.items) assert.ok((D.FOODS.find(f => f.id === id).minStage || 0) <= stage, `${id} at ${texture}`);
+      }
+    }
+  }
+});
+
+test('a baby week uses many different cooking methods, not just purees', () => {
+  const plan = P.generatePlan({ pantry: BIG_PANTRY, days: 7, settings: { age: 'm12', texture: 'mash' }, seed: 11 });
+  const mains = new Set(plan.days.flatMap(d => d.meals.filter(m => m.slot === 'lunch' || m.slot === 'dinner').map(m => m.template)));
+  assert.ok(mains.size >= 5, [...mains].join(','));
+  assert.ok([...mains].some(x => ['meatball', 'stew', 'roast', 'veg_pancake', 'egg_custard', 'tofu_stew'].includes(x)));
+});
+
+test('dish text is complete for every age, texture and language', () => {
+  const profiles = [
+    { age: 'm12', texture: 'puree' }, { age: 'm12', texture: 'mash' }, { age: 'm12', texture: 'minced' },
+    { age: 'y2', texture: 'bites' }, { age: 'y3', texture: 'family', meals: D.AGE_GROUPS[0].meals }, { age: 'y4', texture: 'family' },
+  ];
+  for (const settings of profiles) for (const seed of [1, 2, 3, 4]) {
+    const plan = P.generatePlan({ pantry: BIG_PANTRY, days: 7, settings, seed });
+    for (const m of plan.days.flatMap(d => d.meals)) for (const lang of ['en', 'zh']) {
+      const d = P.describeMeal(m, lang, [], settings);
+      const text = d.title + d.steps.join(' ');
+      assert.ok(d.title.length > 1, JSON.stringify(m));
+      assert.ok(!/undefined|null|NaN/.test(text), `${m.template}: ${text}`);
+    }
+  }
+});
+
+test('salt guidance follows age: none under 2, a pinch at most from 2', () => {
+  const meal = { slot: 'dinner', template: 'k_set', main: 'rice', protein: 'beef', veg: 'carrot', veg2: 'broccoli', pmethod: 'braise', vmethod: 'steam', items: ['rice', 'beef', 'carrot', 'broccoli'] };
+  assert.ok(P.describeMeal(meal, 'en', [], { age: 'y3', texture: 'family' }).steps.some(s => s.includes('pinch of salt')));
+  assert.ok(P.describeMeal(meal, 'en', [], { age: 'm12', texture: 'family' }).steps.some(s => s.includes('No salt')));
+});
+
+test('older children get bigger portions and their own daily needs', () => {
+  const cat = P.buildCatalog([]);
+  const meal = { slot: 'dinner', template: 'k_set', items: ['rice', 'beef'] };
+  assert.ok(P.portionFor(meal, 'rice', cat, 'y3') > P.portionFor(meal, 'rice', cat, 'm12'));
+  assert.strictEqual(P.portionFor(meal, 'egg', cat, 'y3'), 50);
+  assert.ok(P.needsFor('y3')[0] > P.needsFor('m12')[0]);
+  assert.strictEqual(P.needsFor('y4')[5], 10);
+});
+
+test('family photo dishes are used only when their foods are at home', () => {
+  const gallery = [
+    { id: 'g1', title: '番茄炒蛋', foods: ['tomato', 'egg'], slots: ['dinner'], ages: ['y3'] },
+    { id: 'g2', title: '三文鱼饭', foods: ['salmon', 'rice'], slots: ['dinner'], ages: [] },
+  ];
+  let used1 = 0;
+  for (let seed = 1; seed <= 30; seed++) {
+    const plan = P.generatePlan({ pantry: D.STARTER_PANTRY, days: 7, settings: { age: 'y3', texture: 'family' }, seed, gallery });
+    const meals = plan.days.flatMap(d => d.meals);
+    const g = meals.filter(m => m.template === 'gallery');
+    assert.ok(g.every(m => m.gallery === 'g1' && m.slot === 'dinner'), 'salmon is not at home, so g2 never appears');
+    assert.ok(g.length <= 1, 'each photo dish at most once a week');
+    used1 += g.length;
+  }
+  assert.ok(used1 > 0);
+  const baby = P.generatePlan({ pantry: D.STARTER_PANTRY, days: 7, settings: { age: 'm12' }, seed: 1, gallery });
+  assert.ok(!baby.days.flatMap(d => d.meals).some(m => m.gallery === 'g1'), 'tagged for the 3-year-old only');
+});
+
+test('hints from the other child make shared ingredients more likely', () => {
+  const hint = ['beef', 'broccoli', 'sweetpotato'];
+  let withHint = 0;
+  let without = 0;
+  for (let seed = 1; seed <= 20; seed++) {
+    const count = p => p.days.flatMap(d => d.meals).filter(m => m.slot === 'dinner').reduce((n, m) => n + m.items.filter(id => hint.includes(id)).length, 0);
+    const settings = { age: 'y3', texture: 'family' };
+    withHint += count(P.generatePlan({ pantry: D.STARTER_PANTRY, days: 7, settings, seed, hints: Array(7).fill(hint) }));
+    without += count(P.generatePlan({ pantry: D.STARTER_PANTRY, days: 7, settings, seed }));
+  }
+  assert.ok(withHint > without, `${withHint} vs ${without}`);
+});
+
+test('foods are recognised in dish names', () => {
+  assert.deepStrictEqual(P.foodsInText('南瓜鸡肉粥').sort(), ['chicken', 'pumpkin']);
+  assert.deepStrictEqual(P.foodsInText('Tomato & egg noodles').sort(), ['egg', 'noodles', 'tomato']);
+  assert.deepStrictEqual(P.foodsInText('pineapple cake'), []);
+});
+
+test('gallery file names become titles and tags', () => {
+  const { parseName } = require('../scripts/build-gallery.js');
+  assert.deepStrictEqual(parseName('番茄炒蛋 [晚餐 大宝].jpg'), { title: '番茄炒蛋', tags: ['晚餐', '大宝'] });
+  assert.deepStrictEqual(parseName('pumpkin_congee【早餐，小宝】.png'), { title: 'pumpkin congee', tags: ['早餐', '小宝'] });
+});

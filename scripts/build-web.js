@@ -4,6 +4,7 @@ const path = require('path');
 
 const root = path.join(__dirname, '..');
 const out = path.join(root, 'www');
+// The family gallery is loaded live from the published site (js/config.js), so it is not bundled.
 const items = ['index.html', 'manifest.webmanifest', 'sw.js', 'css', 'js', 'icons'];
 
 fs.rmSync(out, { recursive: true, force: true });

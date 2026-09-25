@@ -1,6 +1,6 @@
 // Network-first service worker: always fresh when online, still opens offline.
-const CACHE = 'little-spoon-v3';
-const ASSETS = ['./', 'index.html', 'css/style.css', 'js/data.js', 'js/planner.js', 'js/vision.js', 'js/app.js', 'manifest.webmanifest', 'icons/icon.svg', 'icons/apple-touch-icon.png'];
+const CACHE = 'little-spoon-v4';
+const ASSETS = ['./', 'index.html', 'css/style.css', 'js/data.js', 'js/planner.js', 'js/vision.js', 'js/app.js', 'js/config.js', 'js/gallery.js', 'manifest.webmanifest', 'icons/icon.svg', 'icons/apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
