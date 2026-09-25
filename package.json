@@ -1,0 +1,10 @@
+{
+  "name": "toddler-daily-menu",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Little Spoon Menu: daily/weekly soft-food menus for a 14-month-old from what you have at home (EN / 中文).",
+  "scripts": {
+    "start": "python3 -m http.server 8080",
+    "test": "node --test tests/*.test.js"
+  }
+}
